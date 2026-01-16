@@ -53,7 +53,7 @@
   groups.forEach(g => {
     g.items.forEach(item => {
       const key = `${g.name}-${item.id}`;
-      let defaultSel = item.options ? 0 : "yes";
+      let defaultSel = item.options ? 0 : "yes"; // Left button default
       if (item.label === "Expert Needed") defaultSel = 2;
       if (item.label === "Temp Start" || item.label === "Temp End") defaultSel = 2;
       if (item.label === "Complexity") defaultSel = 6;
@@ -112,7 +112,7 @@
   const C_GRAY_BG = "#f3f4f6"; const C_GRAY_TXT = "#374151"; const C_GRAY_BORDER = "#9ca3af";
   const C_HEADER_GREEN = "#f0fdf4";
   const C_HEADER_RED = "#fef2f2";
-  const C_HEADER_GRAY = "#e0e7ff"; // Neutral/Blueish default
+  const C_HEADER_GRAY = "#e0e7ff"; 
 
   const sOverlay = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.2);display:flex;align-items:flex-start;justify-content:center;z-index:99999;font-family:system-ui,sans-serif;padding-top:20px;overflow-y:auto;pointer-events:none";
   const sModal = "background:white;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.15);width:90%;max-width:550px;height:80vh;max-height:800px;overflow:hidden;display:flex;flex-direction:column;cursor:grab;user-select:none;margin-bottom:20px;pointer-events:auto";
@@ -124,7 +124,6 @@
   const sItemBody = "display:none;padding:12px 16px;border-top:1px solid #e0e0e0;background:#fafafa";
   const sBtnGroup = "margin-bottom:8px;display:flex;gap:6px";
   
-  // Base button styles
   const sBtnBase = "flex:1;padding:8px;border:1px solid;border-radius:4px;cursor:pointer;font-weight:500;font-size:12px;transition:all 0.2s";
   const sSelect = "width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;margin-bottom:8px;font-size:13px";
   const sTextarea = "width:100%;border:1px solid #ccc;border-radius:4px;padding:8px;font-family:inherit;resize:none;height:50px;font-size:13px";
@@ -134,15 +133,10 @@
   const sTagContainer = "display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px";
   
   const getTheme = (item, sel) => {
-     if(item.options) return 'gray'; // Selects are neutral for now
-     const isReversed = item.reverse; // false: yes=good, no=bad. true: no=good, yes=bad.
-     if(!isReversed) {
-        if(sel === 'yes') return 'green';
-        if(sel === 'no') return 'red';
-     } else {
-        if(sel === 'no') return 'green';
-        if(sel === 'yes') return 'red';
-     }
+     if(item.options) return 'gray';
+     // Simplified Logic: 'yes' (Left) is always Green (Good), 'no' (Right) is always Red (Bad)
+     if(sel === 'yes') return 'green';
+     if(sel === 'no') return 'red';
      return 'gray';
   };
 
@@ -158,7 +152,7 @@
   
   let isDragging = false, startX = 0, startY = 0, initialX = 0, initialY = 0;
   const header = createElement("div", sHeader);
-  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v2.6</span>`;
+  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v2.7</span>`;
   
   addListener(header, "mousedown", (e) => {
     if(e.target === header || e.target.parentNode === header) {
@@ -235,7 +229,6 @@
 
         relevantTags.forEach(tagData => {
             const tagBtn = createElement("div");
-            // Determine tag style based on theme
             const theme = getTheme(item, currentSel);
             const cols = getColors(theme);
             const isActive = state[key].selectedTags.some(t => t.id === tagData.id);
@@ -278,7 +271,7 @@
         itemBody.appendChild(select);
       } else {
         const btnYes = createElement("button");
-        btnYes.textContent = item.reverse ? "No" : "Yes";
+        btnYes.textContent = item.reverse ? "No" : "Yes"; // Reversed? Left is "No", Right is "Yes"
         const btnNo = createElement("button");
         btnNo.textContent = item.reverse ? "Yes" : "No";
         const btnGroup = createElement("div", sBtnGroup);
@@ -290,14 +283,13 @@
           const theme = getTheme(item, val);
           const cols = getColors(theme);
           
-          // Helper for styles
           const activeStyle = `${sBtnBase};background:${cols.bg};color:${cols.txt};border-color:${cols.border}`;
           const inactiveStyle = `${sBtnBase};background:white;color:#333;border-color:#ccc`;
 
-          if(val === 'yes') {
+          if(val === 'yes') { // Left
              btnYes.style.cssText = activeStyle;
              btnNo.style.cssText = inactiveStyle;
-          } else {
+          } else { // Right
              btnYes.style.cssText = inactiveStyle;
              btnNo.style.cssText = activeStyle;
           }
@@ -307,7 +299,6 @@
           updateHeaderBg();
         };
         
-        // Initial set
         updateBtnStyle(state[key].sel);
 
         addListener(btnYes, "click", () => updateBtnStyle("yes"));
@@ -328,7 +319,7 @@
       addListener(itemHeader, "click", () => {
         expanded = !expanded;
         itemBody.style.display = expanded ? "block" : "none";
-        updateHeaderBg(); // Re-check to ensure correct state color
+        updateHeaderBg();
         arrow.textContent = expanded ? "▲" : "▼";
         if(expanded && globalTags.length > 0) renderTags(); 
       });
