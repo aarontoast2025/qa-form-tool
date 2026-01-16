@@ -1,6 +1,10 @@
 (function(){
   if(document.getElementById('qa-modal-overlay')) return;
 
+  // Supabase Configuration
+  const SUPABASE_URL = "https://lobhwknisejjvubweall.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvYmh3a25pc2VqanZ1YndlYWxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1Nzk4NjIsImV4cCI6MjA4NDE1NTg2Mn0.2OTSmBD62Fgcecuxps6YoaW9-lPPu1MFA7cWl1g9MUk";
+
   const groups = [
     {
       name: "AQM",
@@ -52,11 +56,10 @@
       const key = `${g.name}-${item.id}`;
       let defaultSel = item.options ? 0 : "yes";
       
-      // User specified defaults
-      if (item.label === "Expert Needed") defaultSel = 2; // N/A
-      if (item.label === "Temp Start" || item.label === "Temp End") defaultSel = 2; // Neutral
-      if (item.label === "Complexity") defaultSel = 6; // Simple Task...
-      if (item.label === "Root Cause") defaultSel = 6; // N/A
+      if (item.label === "Expert Needed") defaultSel = 2;
+      if (item.label === "Temp Start" || item.label === "Temp End") defaultSel = 2;
+      if (item.label === "Complexity") defaultSel = 6;
+      if (item.label === "Root Cause") defaultSel = 6;
 
       state[key] = { 
         sel: defaultSel, 
@@ -102,7 +105,7 @@
   
   let isDragging = false, startX = 0, startY = 0, initialX = 0, initialY = 0;
   const header = createElement("div", sHeader);
-  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v2.3</span>`;
+  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v2.4</span>`;
   
   addListener(header, "mousedown", (e) => {
     if(e.target === header || e.target.parentNode === header) {
@@ -230,6 +233,24 @@
   };
 
   addListener(btnGenerate, "click", async () => {
+    // 1. Fetch defaults from Supabase
+    let supabaseDefaults = {};
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/qa_defaults?select=*`, {
+            headers: {
+                "apikey": SUPABASE_KEY,
+                "Authorization": `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        const data = await response.json();
+        data.forEach(row => {
+            const key = `${row.group_name}-${row.item_id}-${row.response_value}`;
+            supabaseDefaults[key] = row.feedback_text;
+        });
+    } catch (e) {
+        console.error("Supabase fetch failed:", e);
+    }
+
     const allKeys = Object.keys(state);
     const checkedKeys = allKeys.filter(k => state[k].checked);
     const targetKeys = checkedKeys.length > 0 ? checkedKeys : allKeys;
@@ -246,11 +267,9 @@
       let container = findGroupContainer(s.groupName);
       
       if(container) {
-        // Find question relative to fresh container reference
         const question = container.querySelector(`[data-idx="${s.itemId}"]`);
         
         if(question) {
-          // Click Logic
           const control = question.querySelector('[data-testid="SegmentedControl"]');
           if(control) {
             const buttons = Array.from(control.querySelectorAll('button'));
@@ -262,24 +281,25 @@
             }
           }
           
-          // Wait 2.5s for UI updates (e.g. comment box appearing)
           await new Promise(r => setTimeout(r, 2500));
           
-          // RE-QUERY DOM to find the textarea. 
-          // The page might have re-rendered the question row, so we need a fresh lookup.
-          // We search for the container again to be safe, or search globally if we assume uniqueness.
-          // Using findGroupContainer again to ensure freshness if entire group re-rendered.
           container = findGroupContainer(s.groupName); 
           const freshQuestion = container ? container.querySelector(`[data-idx="${s.itemId}"]`) : null;
           
-          if(freshQuestion && s.text) {
-             const txtArea = freshQuestion.querySelector('textarea');
-             if(txtArea) {
-                const proto = Object.getPrototypeOf(txtArea);
-                const setter = Object.getOwnPropertyDescriptor(proto, "value").set;
-                if(setter) setter.call(txtArea, s.text); else txtArea.value = s.text;
-                txtArea.dispatchEvent(new Event("input", { bubbles: true }));
-                txtArea.dispatchEvent(new Event("change", { bubbles: true }));
+          if(freshQuestion) {
+             // Logic: Manual text takes priority. If empty, look up Supabase default.
+             const lookupKey = `${s.groupName}-${s.itemId}-${s.sel}`;
+             const finalText = s.text.trim() || supabaseDefaults[lookupKey] || "";
+
+             if(finalText) {
+                const txtArea = freshQuestion.querySelector('textarea');
+                if(txtArea) {
+                    const proto = Object.getPrototypeOf(txtArea);
+                    const setter = Object.getOwnPropertyDescriptor(proto, "value").set;
+                    if(setter) setter.call(txtArea, finalText); else txtArea.value = finalText;
+                    txtArea.dispatchEvent(new Event("input", { bubbles: true }));
+                    txtArea.dispatchEvent(new Event("change", { bubbles: true }));
+                }
              }
           }
         }
