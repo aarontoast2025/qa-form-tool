@@ -37,7 +37,7 @@
         {id:15,label:"Mistreat/Avoid",options:['No', 'Yes - Rude to Cx', 'Yes - False phone interactions', 'Yes - hung up on cx', 'Yes - excessive holds (caused cx to hang up)', 'Yes - Denied Transfer', 'Yes - Survey Avoidance', 'Yes - Case Avoidance (assigned case, then sent back to same queue with no notes or adjustment to subject line)', 'Yes - Case Avoidance (Case set to Resolution Proposed, without solving the issue)', 'Yes-Changes made without asking for POS code', 'Yes -Changes made without asking for SSN (payroll only)', 'Yes - Verification Process not followed (fraud) ']},
         {id:16,label:"Temp Start",options:['Churn', 'Upset', 'Neutral', 'Happy']},
         {id:17,label:"Temp End",options:['Churn', 'Upset', 'Neutral', 'Happy']},
-        {id:18,label:"Temp Worsen",reverse:!1},
+        {id:18,label:"Temp Worsen",reverse:!0},
         {id:19,label:"Complexity",options:['Training Opportunities (basic)', 'HW/SW troubleshooting (basic)', 'Non-intuitive/not understanding how something works', 'Something is broken/RF', 'Really complicated issue', 'Follow up on another case', 'Simple Task for Care or Team outside of Care', 'Complex Process', 'Feature Request']},
         {id:20,label:"Related Cases",options:['1', '2', '3', '4', '5', '6', '7', '8', '9', '10+']},
         {id:21,label:"Case Owners",options:['1', '2', '3', '4', '5', '6', '7', '8', '9', '10+']},
@@ -50,8 +50,16 @@
   groups.forEach(g => {
     g.items.forEach(item => {
       const key = `${g.name}-${item.id}`;
+      let defaultSel = item.options ? 0 : "yes";
+      
+      // User specified defaults
+      if (item.label === "Expert Needed") defaultSel = 2; // N/A
+      if (item.label === "Temp Start" || item.label === "Temp End") defaultSel = 2; // Neutral
+      if (item.label === "Complexity") defaultSel = 6; // Simple Task...
+      if (item.label === "Root Cause") defaultSel = 6; // N/A
+
       state[key] = { 
-        sel: item.options ? 0 : "yes", 
+        sel: defaultSel, 
         text: "", 
         checked: false,
         groupName: g.name,
@@ -94,7 +102,7 @@
   
   let isDragging = false, startX = 0, startY = 0, initialX = 0, initialY = 0;
   const header = createElement("div", sHeader);
-  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v2.1</span>`;
+  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v2.2</span>`;
   
   addListener(header, "mousedown", (e) => {
     if(e.target === header || e.target.parentNode === header) {
@@ -148,12 +156,21 @@
       let expanded = false;
       const itemBody = createElement("div", sItemBody);
 
+      const updateHeaderBg = () => {
+        if (state[key].text.trim().length > 0) {
+            itemHeader.style.background = "#e0e7ff"; // Light grayish-blue
+        } else {
+            itemHeader.style.background = expanded ? "#e8e8e8" : "#f5f5f5";
+        }
+      };
+
       if (item.options) {
         const select = createElement("select", sSelect);
         item.options.forEach((opt, idx) => {
           const o = createElement("option");
           o.value = idx;
           o.textContent = opt;
+          if (idx === state[key].sel) o.selected = true;
           select.appendChild(o);
         });
         addListener(select, "change", (e) => state[key].sel = parseInt(e.target.value));
@@ -179,13 +196,16 @@
 
       const textarea = createElement("textarea", sTextarea);
       textarea.placeholder = "Comments...";
-      addListener(textarea, "input", (e) => state[key].text = e.target.value);
+      addListener(textarea, "input", (e) => { 
+          state[key].text = e.target.value;
+          updateHeaderBg();
+      });
       itemBody.appendChild(textarea);
 
       addListener(itemHeader, "click", () => {
         expanded = !expanded;
         itemBody.style.display = expanded ? "block" : "none";
-        itemHeader.style.background = expanded ? "#e8e8e8" : "#f5f5f5";
+        updateHeaderBg();
         arrow.textContent = expanded ? "▲" : "▼";
       });
 
