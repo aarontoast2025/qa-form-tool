@@ -54,7 +54,6 @@
     g.items.forEach(item => {
       const key = `${g.name}-${item.id}`;
       let defaultSel = item.options ? 0 : "yes";
-      
       if (item.label === "Expert Needed") defaultSel = 2;
       if (item.label === "Temp Start" || item.label === "Temp End") defaultSel = 2;
       if (item.label === "Complexity") defaultSel = 6;
@@ -67,18 +66,16 @@
         groupName: g.name,
         itemId: item.id,
         itemType: item.options ? 'select' : 'toggle',
-        selectedTags: [] // Store selected tag objects {label, feedback}
+        selectedTags: []
       };
     });
   });
 
-  // Fetch Tags and Defaults globally
   let globalTags = [];
   let globalDefaults = {};
 
   const initData = async () => {
     try {
-        // Fetch Defaults
         const respDefs = await fetch(`${SUPABASE_URL}/rest/v1/qa_defaults?select=*`, {
             headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
         });
@@ -88,22 +85,15 @@
             globalDefaults[key] = row.feedback_text;
         });
 
-        // Fetch Tags
         const respTags = await fetch(`${SUPABASE_URL}/rest/v1/qa_tags?select=*`, {
             headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
         });
         globalTags = await respTags.json();
-        
-        // Refresh UI if modal is open (simple re-render or event dispatch could work, 
-        // but for now we rely on the user interacting after load)
-        // Ideally we should render after fetch, but to keep UI responsive we render first.
-        // We will trigger a "redraw" of active tag sections.
         document.dispatchEvent(new Event('qa-data-loaded'));
     } catch (e) {
         console.error("Supabase fetch failed:", e);
     }
   };
-  
   initData();
 
   const createElement = (tag, css) => {
@@ -116,6 +106,14 @@
     el.addEventListener(event, handler);
   };
 
+  // Colors
+  const C_GREEN_BG = "#dcfce7"; const C_GREEN_TXT = "#14532d"; const C_GREEN_BORDER = "#15803d";
+  const C_RED_BG = "#fee2e2"; const C_RED_TXT = "#7f1d1d"; const C_RED_BORDER = "#b91c1c";
+  const C_GRAY_BG = "#f3f4f6"; const C_GRAY_TXT = "#374151"; const C_GRAY_BORDER = "#9ca3af";
+  const C_HEADER_GREEN = "#f0fdf4";
+  const C_HEADER_RED = "#fef2f2";
+  const C_HEADER_GRAY = "#e0e7ff"; // Neutral/Blueish default
+
   const sOverlay = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.2);display:flex;align-items:flex-start;justify-content:center;z-index:99999;font-family:system-ui,sans-serif;padding-top:20px;overflow-y:auto;pointer-events:none";
   const sModal = "background:white;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.15);width:90%;max-width:550px;height:80vh;max-height:800px;overflow:hidden;display:flex;flex-direction:column;cursor:grab;user-select:none;margin-bottom:20px;pointer-events:auto";
   const sHeader = "padding:15px 20px;border-bottom:1px solid #e0e0e0;font-size:18px;font-weight:600;color:#333;cursor:grab;display:flex;justify-content:space-between;align-items:center";
@@ -125,16 +123,34 @@
   const sItemHeader = "width:100%;padding:10px 16px;background:#f5f5f5;border:none;text-align:left;cursor:pointer;font-weight:500;color:#333;display:flex;justify-content:space-between;align-items:center";
   const sItemBody = "display:none;padding:12px 16px;border-top:1px solid #e0e0e0;background:#fafafa";
   const sBtnGroup = "margin-bottom:8px;display:flex;gap:6px";
-  const sBtnInactive = "flex:1;padding:8px;border:1px solid #ccc;background:white;color:#333;border-radius:4px;cursor:pointer;font-weight:500;font-size:12px";
-  const sBtnActive = "flex:1;padding:8px;border:1px solid #2563eb;background:#2563eb;color:white;border-radius:4px;cursor:pointer;font-weight:500;font-size:12px";
+  
+  // Base button styles
+  const sBtnBase = "flex:1;padding:8px;border:1px solid;border-radius:4px;cursor:pointer;font-weight:500;font-size:12px;transition:all 0.2s";
   const sSelect = "width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;margin-bottom:8px;font-size:13px";
   const sTextarea = "width:100%;border:1px solid #ccc;border-radius:4px;padding:8px;font-family:inherit;resize:none;height:50px;font-size:13px";
   const sFooter = "padding:16px;border-top:1px solid #e0e0e0;display:flex;gap:12px;justify-content:flex-end";
   const sBtnCancel = "padding:8px 16px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;font-size:14px;color:#333";
   const sBtnGenerate = "padding:8px 16px;border:none;background:#2563eb;color:white;border-radius:4px;cursor:pointer;font-size:14px;font-weight:500";
   const sTagContainer = "display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px";
-  const sTag = "padding:4px 8px;border:1px solid #ccc;border-radius:12px;font-size:11px;cursor:pointer;background:#f0f0f0;color:#333;transition:all 0.2s";
-  const sTagActive = "padding:4px 8px;border:1px solid #2563eb;border-radius:12px;font-size:11px;cursor:pointer;background:#dbeafe;color:#1e40af;font-weight:500;transition:all 0.2s";
+  
+  const getTheme = (item, sel) => {
+     if(item.options) return 'gray'; // Selects are neutral for now
+     const isReversed = item.reverse; // false: yes=good, no=bad. true: no=good, yes=bad.
+     if(!isReversed) {
+        if(sel === 'yes') return 'green';
+        if(sel === 'no') return 'red';
+     } else {
+        if(sel === 'no') return 'green';
+        if(sel === 'yes') return 'red';
+     }
+     return 'gray';
+  };
+
+  const getColors = (theme) => {
+      if(theme === 'green') return { bg: C_GREEN_BG, txt: C_GREEN_TXT, border: C_GREEN_BORDER, header: C_HEADER_GREEN };
+      if(theme === 'red') return { bg: C_RED_BG, txt: C_RED_TXT, border: C_RED_BORDER, header: C_HEADER_RED };
+      return { bg: C_GRAY_BG, txt: C_GRAY_TXT, border: C_GRAY_BORDER, header: C_HEADER_GRAY };
+  };
 
   const overlay = createElement("div", sOverlay);
   overlay.id = "qa-modal-overlay";
@@ -142,7 +158,7 @@
   
   let isDragging = false, startX = 0, startY = 0, initialX = 0, initialY = 0;
   const header = createElement("div", sHeader);
-  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v2.5</span>`;
+  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v2.6</span>`;
   
   addListener(header, "mousedown", (e) => {
     if(e.target === header || e.target.parentNode === header) {
@@ -195,12 +211,22 @@
 
       let expanded = false;
       const itemBody = createElement("div", sItemBody);
-      const tagContainer = createElement("div", sTagContainer); // Container for tags
+      const tagContainer = createElement("div", sTagContainer);
+
+      const updateHeaderBg = () => {
+        const hasContent = state[key].text.trim().length > 0 || state[key].selectedTags.length > 0;
+        if (hasContent) {
+            const theme = getTheme(item, state[key].sel);
+            const cols = getColors(theme);
+            itemHeader.style.background = cols.header;
+        } else {
+            itemHeader.style.background = expanded ? "#e8e8e8" : "#f5f5f5";
+        }
+      };
 
       const renderTags = () => {
         tagContainer.innerHTML = "";
-        const currentSel = state[key].sel; // 'yes', 'no', or int
-        // Filter tags for this item and current selection
+        const currentSel = state[key].sel;
         const relevantTags = globalTags.filter(t => 
             t.group_name === group.name && 
             t.item_id === item.id && 
@@ -208,12 +234,18 @@
         );
 
         relevantTags.forEach(tagData => {
-            const tagBtn = createElement("div", sTag);
-            tagBtn.textContent = tagData.tag_label;
-            
-            // Check if active
+            const tagBtn = createElement("div");
+            // Determine tag style based on theme
+            const theme = getTheme(item, currentSel);
+            const cols = getColors(theme);
             const isActive = state[key].selectedTags.some(t => t.id === tagData.id);
-            if(isActive) tagBtn.style.cssText = sTagActive;
+            
+            if(isActive) {
+                tagBtn.style.cssText = `padding:4px 8px;border:1px solid ${cols.border};border-radius:12px;font-size:11px;cursor:pointer;background:${cols.bg};color:${cols.txt};font-weight:500;transition:all 0.2s`;
+            } else {
+                tagBtn.style.cssText = `padding:4px 8px;border:1px solid #ccc;border-radius:12px;font-size:11px;cursor:pointer;background:#f9fafb;color:#333;transition:all 0.2s`;
+            }
+            tagBtn.textContent = tagData.tag_label;
 
             addListener(tagBtn, "click", () => {
                 if(isActive) {
@@ -221,18 +253,11 @@
                 } else {
                     state[key].selectedTags.push(tagData);
                 }
-                renderTags(); // Re-render to update state style
+                renderTags();
+                updateHeaderBg();
             });
             tagContainer.appendChild(tagBtn);
         });
-      };
-
-      const updateHeaderBg = () => {
-        if (state[key].text.trim().length > 0) {
-            itemHeader.style.background = "#e0e7ff";
-        } else {
-            itemHeader.style.background = expanded ? "#e8e8e8" : "#f5f5f5";
-        }
       };
 
       if (item.options) {
@@ -246,14 +271,15 @@
         });
         addListener(select, "change", (e) => {
             state[key].sel = parseInt(e.target.value);
-            state[key].selectedTags = []; // Reset tags on selection change
+            state[key].selectedTags = []; 
             renderTags();
+            updateHeaderBg();
         });
         itemBody.appendChild(select);
       } else {
-        const btnYes = createElement("button", sBtnActive);
+        const btnYes = createElement("button");
         btnYes.textContent = item.reverse ? "No" : "Yes";
-        const btnNo = createElement("button", sBtnInactive);
+        const btnNo = createElement("button");
         btnNo.textContent = item.reverse ? "Yes" : "No";
         const btnGroup = createElement("div", sBtnGroup);
         btnGroup.appendChild(btnYes);
@@ -261,17 +287,35 @@
 
         const updateBtnStyle = (val) => {
           state[key].sel = val;
-          btnYes.style.cssText = val === "yes" ? sBtnActive : sBtnInactive;
-          btnNo.style.cssText = val === "no" ? sBtnActive : sBtnInactive;
-          state[key].selectedTags = []; // Reset tags on selection change
+          const theme = getTheme(item, val);
+          const cols = getColors(theme);
+          
+          // Helper for styles
+          const activeStyle = `${sBtnBase};background:${cols.bg};color:${cols.txt};border-color:${cols.border}`;
+          const inactiveStyle = `${sBtnBase};background:white;color:#333;border-color:#ccc`;
+
+          if(val === 'yes') {
+             btnYes.style.cssText = activeStyle;
+             btnNo.style.cssText = inactiveStyle;
+          } else {
+             btnYes.style.cssText = inactiveStyle;
+             btnNo.style.cssText = activeStyle;
+          }
+
+          state[key].selectedTags = []; 
           renderTags();
+          updateHeaderBg();
         };
+        
+        // Initial set
+        updateBtnStyle(state[key].sel);
+
         addListener(btnYes, "click", () => updateBtnStyle("yes"));
         addListener(btnNo, "click", () => updateBtnStyle("no"));
         itemBody.appendChild(btnGroup);
       }
 
-      itemBody.appendChild(tagContainer); // Add tags below controls
+      itemBody.appendChild(tagContainer);
 
       const textarea = createElement("textarea", sTextarea);
       textarea.placeholder = "Comments...";
@@ -284,12 +328,11 @@
       addListener(itemHeader, "click", () => {
         expanded = !expanded;
         itemBody.style.display = expanded ? "block" : "none";
-        updateHeaderBg();
+        updateHeaderBg(); // Re-check to ensure correct state color
         arrow.textContent = expanded ? "▲" : "▼";
-        if(expanded && globalTags.length > 0) renderTags(); // Render tags on expand
+        if(expanded && globalTags.length > 0) renderTags(); 
       });
 
-      // Listen for global data load to refresh tags if already open
       document.addEventListener('qa-data-loaded', () => {
           if(expanded) renderTags();
       });
@@ -351,7 +394,6 @@
           const freshQuestion = container ? container.querySelector(`[data-idx="${s.itemId}"]`) : null;
           
           if(freshQuestion) {
-             // Logic: Manual > Selected Tags (Combined) > Default
              let finalText = s.text.trim();
              
              if(!finalText) {
