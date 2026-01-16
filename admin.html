@@ -16,7 +16,7 @@
             <div class="container mx-auto px-4 py-4 flex justify-between items-center">
                 <div class="flex items-center gap-3">
                     <i class="fa-solid fa-toolbox text-2xl"></i>
-                    <h1 class="text-xl font-bold">QA Form Admin v2.7</h1>
+                    <h1 class="text-xl font-bold">QA Form Admin v2.8</h1>
                 </div>
                 <div class="text-xs bg-blue-800 px-3 py-1 rounded border border-blue-600">
                     <i class="fa-solid fa-database mr-1"></i> Connected to Supabase
@@ -92,7 +92,7 @@
                     <div>
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-bold text-gray-700 border-l-4 border-purple-500 pl-3">Sub-Reason Tags (Badges)</h3>
-                            <button @click="showAddTagModal = true" class="text-sm text-purple-600 hover:text-purple-800 font-semibold"><i class="fa-solid fa-plus-circle"></i> Add Tag</button>
+                            <button @click="openAddTagModal" class="text-sm text-purple-600 hover:text-purple-800 font-semibold"><i class="fa-solid fa-plus-circle"></i> Add Tag</button>
                         </div>
 
                         <div v-if="itemTags.length === 0" class="text-center py-8 bg-gray-50 rounded border border-dashed border-gray-300 text-gray-400">No tags configured for this item.</div>
@@ -109,7 +109,10 @@
                                     </div>
                                     <p class="text-sm text-gray-600">{{ tag.tag_feedback }}</p>
                                 </div>
-                                <button @click="deleteTag(tag.id)" class="text-red-400 hover:text-red-600 p-2 transition-colors"><i class="fa-solid fa-trash"></i></button>
+                                <div class="flex gap-2">
+                                    <button @click="openEditTagModal(tag)" class="text-blue-400 hover:text-blue-600 p-2 transition-colors" title="Edit Tag"><i class="fa-solid fa-pencil"></i></button>
+                                    <button @click="deleteTag(tag.id)" class="text-red-400 hover:text-red-600 p-2 transition-colors" title="Delete Tag"><i class="fa-solid fa-trash"></i></button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -123,7 +126,7 @@
 
         <div v-if="showAddTagModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white rounded-lg shadow-xl w-96 p-6">
-                <h3 class="text-lg font-bold text-gray-800 mb-4">Add New Tag</h3>
+                <h3 class="text-lg font-bold text-gray-800 mb-4">{{ isEditingTag ? 'Edit Tag' : 'Add New Tag' }}</h3>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">When selected option is:</label>
                     <select v-model="newTag.response_value" class="w-full border rounded p-2 text-sm bg-gray-50">
@@ -139,7 +142,7 @@
                 </div>
                 <div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-1">Badge Label (Short)</label><input v-model="newTag.tag_label" type="text" class="w-full border rounded p-2 text-sm" placeholder="e.g. No Branding"></div>
                 <div class="mb-6"><label class="block text-sm font-medium text-gray-700 mb-1">Feedback Text</label><textarea v-model="newTag.tag_feedback" class="w-full border rounded p-2 text-sm h-20" placeholder="The text added to comments..."></textarea></div>
-                <div class="flex justify-end gap-3"><button @click="showAddTagModal = false" class="text-gray-500 hover:text-gray-700 font-medium text-sm">Cancel</button><button @click="addTag" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm font-medium">Add Tag</button></div>
+                <div class="flex justify-end gap-3"><button @click="showAddTagModal = false" class="text-gray-500 hover:text-gray-700 font-medium text-sm">Cancel</button><button @click="saveTag" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm font-medium">{{ isEditingTag ? 'Update Tag' : 'Add Tag' }}</button></div>
             </div>
         </div>
     </div>
@@ -164,6 +167,7 @@
                 const searchQuery = ref("");
                 const loading = ref(false);
                 const showAddTagModal = ref(false);
+                const isEditingTag = ref(false);
                 const defaultsMap = ref({});
                 const itemTags = ref([]);
                 const newTag = ref({ response_value: 'no', tag_label: '', tag_feedback: '' });
@@ -197,11 +201,43 @@
                     } catch(e) { alert("Error saving: " + e.message); } finally { loading.value = false; }
                 };
 
-                const addTag = async () => {
+                const openAddTagModal = () => {
+                    isEditingTag.value = false;
+                    newTag.value = { response_value: 'no', tag_label: '', tag_feedback: '' };
+                    showAddTagModal.value = true;
+                };
+
+                const openEditTagModal = (tag) => {
+                    isEditingTag.value = true;
+                    newTag.value = { ...tag }; // Clone
+                    showAddTagModal.value = true;
+                };
+
+                const saveTag = async () => {
                     if(!newTag.value.tag_label || !newTag.value.tag_feedback) return alert("Please fill all fields");
-                    const tagPayload = { group_name: activeGroup.value, item_id: selectedItem.value.id, item_name: selectedItem.value.label, response_value: newTag.value.response_value, tag_label: newTag.value.tag_label, tag_feedback: newTag.value.tag_feedback };
-                    const { data, error } = await supabase.from('qa_tags').insert([tagPayload]).select();
-                    if(error) alert("Error adding tag: " + error.message); else { itemTags.value.push(data[0]); showAddTagModal.value = false; newTag.value = { response_value: 'no', tag_label: '', tag_feedback: '' }; }
+                    
+                    const tagPayload = { 
+                        group_name: activeGroup.value, 
+                        item_id: selectedItem.value.id, 
+                        item_name: selectedItem.value.label, 
+                        response_value: newTag.value.response_value, 
+                        tag_label: newTag.value.tag_label, 
+                        tag_feedback: newTag.value.tag_feedback 
+                    };
+
+                    if (isEditingTag.value) {
+                         const { data, error } = await supabase.from('qa_tags').update(tagPayload).eq('id', newTag.value.id).select();
+                         if(error) alert("Error updating tag: " + error.message);
+                         else {
+                             const idx = itemTags.value.findIndex(t => t.id === newTag.value.id);
+                             if (idx !== -1) itemTags.value[idx] = data[0];
+                             showAddTagModal.value = false;
+                         }
+                    } else {
+                         const { data, error } = await supabase.from('qa_tags').insert([tagPayload]).select();
+                         if(error) alert("Error adding tag: " + error.message); 
+                         else { itemTags.value.push(data[0]); showAddTagModal.value = false; }
+                    }
                 };
 
                 const deleteTag = async (id) => {
@@ -218,7 +254,7 @@
                    return val;
                 };
 
-                return { groups, activeGroup, selectedItem, searchQuery, filteredItems, selectItem, defaultsMap, itemTags, loading, saveAll, showAddTagModal, newTag, addTag, deleteTag, formatTrigger }
+                return { groups, activeGroup, selectedItem, searchQuery, filteredItems, selectItem, defaultsMap, itemTags, loading, saveAll, showAddTagModal, newTag, saveTag, deleteTag, formatTrigger, openAddTagModal, openEditTagModal, isEditingTag }
             }
         }).mount('#app');
     </script>
