@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA Tool Admin</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f3f4f6; }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+    </style>
+</head>
+<body id="app">
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-blue-700 text-white shadow-md">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-toolbox text-2xl"></i>
+                    <h1 class="text-xl font-bold">QA Form Admin</h1>
+                </div>
+                <div class="text-xs bg-blue-800 px-3 py-1 rounded border border-blue-600">
+                    <i class="fa-solid fa-database mr-1"></i> Connected to Supabase
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 container mx-auto px-4 py-6 flex gap-6">
+            
+            <!-- Sidebar: Item List -->
+            <div class="w-1/3 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col h-[85vh]">
+                <!-- Group Tabs -->
+                <div class="flex border-b">
+                    <button 
+                        v-for="g in groups" 
+                        :key="g.name"
+                        @click="activeGroup = g.name; selectedItem = null"
+                        :class="['flex-1 py-3 text-sm font-semibold text-center transition-colors', activeGroup === g.name ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-50']"
+                    >
+                        {{ g.name }}
+                    </button>
+                </div>
+
+                <!-- Search -->
+                <div class="p-3 border-b">
+                    <input v-model="searchQuery" type="text" placeholder="Search items..." class="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-blue-500">
+                </div>
+
+                <!-- List -->
+                <div class="flex-1 overflow-y-auto">
+                    <div 
+                        v-for="item in filteredItems" 
+                        :key="item.id"
+                        @click="selectItem(item)"
+                        :class="['px-4 py-3 border-b cursor-pointer hover:bg-gray-50 transition-colors flex justify-between items-center', selectedItem?.id === item.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : 'border-l-4 border-l-transparent']"
+                    >
+                        <div>
+                            <span class="text-xs font-bold text-gray-400 mr-2">#{{ item.id }}</span>
+                            <span class="text-sm font-medium text-gray-700">{{ item.label }}</span>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-xs text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detail Area -->
+            <div class="w-2/3 bg-white rounded-lg shadow-sm p-6 overflow-y-auto h-[85vh]">
+                <div v-if="selectedItem">
+                    <div class="flex justify-between items-start mb-6 border-b pb-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-800">{{ selectedItem.label }}</h2>
+                            <p class="text-sm text-gray-500 mt-1">
+                                Group: <span class="font-semibold">{{ activeGroup }}</span> | 
+                                Type: <span class="bg-gray-100 px-2 py-0.5 rounded text-xs">{{ selectedItem.options ? 'Dropdown' : 'Yes/No Toggle' }}</span>
+                            </p>
+                        </div>
+                        <button @click="saveAll" :disabled="loading" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow text-sm font-medium transition-colors">
+                            <i class="fa-solid fa-save mr-2"></i> {{ loading ? 'Saving...' : 'Save Changes' }}
+                        </button>
+                    </div>
+
+                    <!-- 1. Main Defaults Section -->
+                    <div class="mb-8">
+                        <h3 class="text-lg font-bold text-gray-700 mb-4 border-l-4 border-blue-500 pl-3">Default Feedback</h3>
+                        
+                        <div v-if="!selectedItem.options" class="grid grid-cols-2 gap-4">
+                            <!-- Toggle: Yes -->
+                            <div class="bg-gray-50 p-4 rounded border">
+                                <div class="flex justify-between mb-2">
+                                    <label class="font-bold text-sm text-gray-700">Selection: <span class="text-green-600">YES</span></label>
+                                    <span v-if="selectedItem.reverse" class="text-xs text-red-500 font-bold bg-red-100 px-2 rounded">BAD Outcome</span>
+                                    <span v-else class="text-xs text-green-500 font-bold bg-green-100 px-2 rounded">GOOD Outcome</span>
+                                </div>
+                                <textarea v-model="defaultsMap['yes']" class="w-full h-24 p-2 text-sm border rounded focus:ring-1 focus:ring-blue-500" placeholder="Default text for YES selection..."></textarea>
+                            </div>
+                            <!-- Toggle: No -->
+                            <div class="bg-gray-50 p-4 rounded border">
+                                <div class="flex justify-between mb-2">
+                                    <label class="font-bold text-sm text-gray-700">Selection: <span class="text-red-600">NO</span></label>
+                                    <span v-if="!selectedItem.reverse" class="text-xs text-red-500 font-bold bg-red-100 px-2 rounded">BAD Outcome</span>
+                                    <span v-else class="text-xs text-green-500 font-bold bg-green-100 px-2 rounded">GOOD Outcome</span>
+                                </div>
+                                <textarea v-model="defaultsMap['no']" class="w-full h-24 p-2 text-sm border rounded focus:ring-1 focus:ring-blue-500" placeholder="Default text for NO selection..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Dropdown Options -->
+                        <div v-else class="space-y-3">
+                            <div v-for="(opt, idx) in selectedItem.options" :key="idx" class="flex gap-4 items-start bg-gray-50 p-3 rounded border">
+                                <div class="w-1/3 pt-2">
+                                    <span class="text-xs font-bold text-gray-400 block mb-1">Option {{ idx }}</span>
+                                    <span class="text-sm font-medium text-gray-800">{{ opt }}</span>
+                                </div>
+                                <textarea v-model="defaultsMap[idx]" class="w-2/3 h-16 p-2 text-sm border rounded focus:ring-1 focus:ring-blue-500" placeholder="Feedback for this option..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Tags Manager Section -->
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold text-gray-700 border-l-4 border-purple-500 pl-3">Sub-Reason Tags (Badges)</h3>
+                            <button @click="showAddTagModal = true" class="text-sm text-purple-600 hover:text-purple-800 font-semibold">
+                                <i class="fa-solid fa-plus-circle"></i> Add Tag
+                            </button>
+                        </div>
+
+                        <div v-if="itemTags.length === 0" class="text-center py-8 bg-gray-50 rounded border border-dashed border-gray-300 text-gray-400">
+                            No tags configured for this item.
+                        </div>
+
+                        <div v-else class="grid grid-cols-1 gap-3">
+                            <div v-for="tag in itemTags" :key="tag.id" class="flex items-center gap-3 bg-white p-3 rounded shadow-sm border hover:shadow-md transition-shadow">
+                                <div class="flex flex-col items-center justify-center w-16 bg-gray-100 rounded p-2 text-center">
+                                    <span class="text-[10px] text-gray-500 uppercase tracking-wider">Trigger</span>
+                                    <span class="font-bold text-sm text-gray-700">{{ formatTrigger(tag.response_value) }}</span>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold border border-purple-200">{{ tag.tag_label }}</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600">{{ tag.tag_feedback }}</p>
+                                </div>
+                                <button @click="deleteTag(tag.id)" class="text-red-400 hover:text-red-600 p-2 transition-colors" title="Delete Tag">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div v-else class="h-full flex flex-col items-center justify-center text-gray-400">
+                    <i class="fa-regular fa-hand-pointer text-4xl mb-4 opacity-50"></i>
+                    <p class="text-lg">Select an item from the sidebar to edit.</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Add Tag Modal -->
+        <div v-if="showAddTagModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-xl w-96 p-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">Add New Tag</h3>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">When selected option is:</label>
+                    <select v-model="newTag.response_value" class="w-full border rounded p-2 text-sm bg-gray-50">
+                        <template v-if="!selectedItem.options">
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
+                        </template>
+                        <template v-else>
+                            <option v-for="(opt, idx) in selectedItem.options" :key="idx" :value="idx">{{ opt }}</option>
+                        </template>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Badge Label (Short)</label>
+                    <input v-model="newTag.tag_label" type="text" class="w-full border rounded p-2 text-sm" placeholder="e.g. No Branding">
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Feedback Text</label>
+                    <textarea v-model="newTag.tag_feedback" class="w-full border rounded p-2 text-sm h-20" placeholder="The text added to comments..."></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <button @click="showAddTagModal = false" class="text-gray-500 hover:text-gray-700 font-medium text-sm">Cancel</button>
+                    <button @click="addTag" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm font-medium">Add Tag</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createClient } = supabase;
+
+        // --- CONFIG ---
+        const SUPABASE_URL = "https://lobhwknisejjvubweall.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvYmh3a25pc2VqanZ1YndlYWxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1Nzk4NjIsImV4cCI6MjA4NDE1NTg2Mn0.2OTSmBD62Fgcecuxps6YoaW9-lPPu1MFA7cWl1g9MUk";
+        
+        // Definition from qa-form.js
+        const GROUPS = [
+            {
+            name: "AQM",
+            items: [
+                {id:1,label:"Greeting",reverse:!1},
+                {id:2,label:"Cx's Name",reverse:!1},
+                {id:3,label:"Business Name",reverse:!1},
+                {id:4,label:"Callback",reverse:!1},
+                {id:5,label:"Closing",reverse:!1},
+                {id:6,label:"Poor Listening",reverse:!0},
+                {id:7,label:"Appropriate Tone",reverse:!1},
+                {id:8,label:"Poor Call Control",reverse:!0},
+                {id:9,label:"Empathy",reverse:!1},
+                {id:10,label:"Confirm Solution",reverse:!1}
+            ]
+            },
+            {
+            name: "Case Management",
+            items: [
+                {id:1,label:"Resolution",reverse:!1},
+                {id:2,label:"Escalation",reverse:!1},
+                {id:3,label:"Failed Follow-up",reverse:!0},
+                {id:4,label:"Out of Context Article",reverse:!0},
+                {id:5,label:"Reach-out (8h)",reverse:!1},
+                {id:6,label:"Expectations",reverse:!1},
+                {id:7,label:"Wrong Contact Method",reverse:!0},
+                {id:8,label:"Written Comm",reverse:!1},
+                {id:9,label:"Internal Comm",reverse:!1},
+                {id:10,label:"1case1issue",reverse:!1},
+                {id:11,label:"Case Notes",reverse:!1},
+                {id:12,label:"Account Info",reverse:!1},
+                {id:13,label:"Expert Needed",options:['Yes', 'No', 'N/A']},
+                {id:14,label:"Incorrect Case Staging",options:['No - staged correctly', 'Yes - pending cx instead of pending care', 'Yes - pending care instead of pending cx', 'Yes - res proposed (instead of pending cx)', 'Yes - res proposed (instead of pending Care)', "Yes - merged case when shouldn't have"]},
+                {id:15,label:"Mistreat/Avoid",options:['No', 'Yes - Rude to Cx', 'Yes - False phone interactions', 'Yes - hung up on cx', 'Yes - excessive holds (caused cx to hang up)', 'Yes - Denied Transfer', 'Yes - Survey Avoidance', 'Yes - Case Avoidance (assigned case, then sent back to same queue with no notes or adjustment to subject line)', 'Yes - Case Avoidance (Case set to Resolution Proposed, without solving the issue)', 'Yes-Changes made without asking for POS code', 'Yes -Changes made without asking for SSN (payroll only)', 'Yes - Verification Process not followed (fraud) ']},
+                {id:16,label:"Temp Start",options:['Churn', 'Upset', 'Neutral', 'Happy']},
+                {id:17,label:"Temp End",options:['Churn', 'Upset', 'Neutral', 'Happy']},
+                {id:18,label:"Temp Worsen",reverse:!0},
+                {id:19,label:"Complexity",options:['Training Opportunities (basic)', 'HW/SW troubleshooting (basic)', 'Non-intuitive/not understanding how something works', 'Something is broken/RF', 'Really complicated issue', 'Follow up on another case', 'Simple Task for Care or Team outside of Care', 'Complex Process', 'Feature Request']},
+                {id:20,label:"Related Cases",options:['1', '2', '3', '4', '5', '6', '7', '8', '9', '10+']},
+                {id:21,label:"Case Owners",options:['1', '2', '3', '4', '5', '6', '7', '8', '9', '10+']},
+                {id:22,label:"Root Cause",options:['In Progress - Waiting on Other team', 'Improperly Escalated', 'Work Avoidance', 'Unclear Policy/Process', 'Simple Knowledge Gap', 'Complex Knowledge Gap', 'N/A']}
+            ]
+            }
+        ];
+
+        const { createApp, ref, computed, onMounted, watch } = Vue;
+
+        createApp({
+            setup() {
+                const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+                
+                const groups = ref(GROUPS);
+                const activeGroup = ref("AQM");
+                const selectedItem = ref(null);
+                const searchQuery = ref("");
+                const loading = ref(false);
+                const showAddTagModal = ref(false);
+
+                // Data Models
+                const defaultsMap = ref({}); // Stores fetched default texts { "yes": "...", "no": "..." }
+                const itemTags = ref([]); // Stores fetched tags for current item
+
+                const newTag = ref({ response_value: 'no', tag_label: '', tag_feedback: '' });
+
+                // Computed
+                const activeGroupItems = computed(() => {
+                    return groups.value.find(g => g.name === activeGroup.value)?.items || [];
+                });
+
+                const filteredItems = computed(() => {
+                    if(!searchQuery.value) return activeGroupItems.value;
+                    const q = searchQuery.value.toLowerCase();
+                    return activeGroupItems.value.filter(i => i.label.toLowerCase().includes(q));
+                });
+
+                // Methods
+                const selectItem = async (item) => {
+                    selectedItem.value = item;
+                    defaultsMap.value = {}; // Reset inputs
+                    itemTags.value = [];
+                    loading.value = true;
+                    
+                    try {
+                        // 1. Fetch Defaults
+                        const { data: defaults, error: err1 } = await supabase
+                            .from('qa_defaults')
+                            .select('*')
+                            .eq('group_name', activeGroup.value)
+                            .eq('item_id', item.id);
+                        
+                        if(defaults) {
+                            defaults.forEach(d => {
+                                defaultsMap.value[d.response_value] = d.feedback_text;
+                            });
+                        }
+
+                        // 2. Fetch Tags
+                        const { data: tags, error: err2 } = await supabase
+                            .from('qa_tags')
+                            .select('*')
+                            .eq('group_name', activeGroup.value)
+                            .eq('item_id', item.id)
+                            .order('id', { ascending: true });
+                        
+                        if(tags) {
+                            itemTags.value = tags;
+                        }
+
+                    } catch(e) {
+                        console.error(e);
+                        alert("Error loading item data.");
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const saveAll = async () => {
+                    if(!selectedItem.value) return;
+                    loading.value = true;
+
+                    const item = selectedItem.value;
+                    const group = activeGroup.value;
+                    const upserts = [];
+
+                    // Prepare Defaults Data
+                    // We iterate over keys in defaultsMap (yes/no/0/1...)
+                    for (const [key, val] of Object.entries(defaultsMap.value)) {
+                        upserts.push({
+                            group_name: group,
+                            item_id: item.id,
+                            item_name: item.label,
+                            response_value: key,
+                            feedback_text: val
+                        });
+                    }
+
+                    try {
+                        // Upsert defaults
+                        const { error } = await supabase
+                            .from('qa_defaults')
+                            .upsert(upserts, { onConflict: 'group_name,item_id,response_value' });
+                        
+                        if(error) throw error;
+                        
+                        alert("Changes saved successfully!");
+                    } catch(e) {
+                        console.error(e);
+                        alert("Error saving: " + e.message);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const addTag = async () => {
+                    if(!newTag.value.tag_label || !newTag.value.tag_feedback) {
+                        alert("Please fill all fields");
+                        return;
+                    }
+
+                    const tagPayload = {
+                        group_name: activeGroup.value,
+                        item_id: selectedItem.value.id,
+                        item_name: selectedItem.value.label,
+                        response_value: newTag.value.response_value,
+                        tag_label: newTag.value.tag_label,
+                        tag_feedback: newTag.value.tag_feedback
+                    };
+
+                    const { data, error } = await supabase
+                        .from('qa_tags')
+                        .insert([tagPayload])
+                        .select();
+
+                    if(error) {
+                        alert("Error adding tag: " + error.message);
+                    } else {
+                        itemTags.value.push(data[0]);
+                        showAddTagModal.value = false;
+                        newTag.value = { response_value: 'no', tag_label: '', tag_feedback: '' }; // Reset
+                    }
+                };
+
+                const deleteTag = async (id) => {
+                    if(!confirm("Are you sure you want to delete this tag?")) return;
+                    
+                    const { error } = await supabase
+                        .from('qa_tags')
+                        .delete()
+                        .eq('id', id);
+                    
+                    if(error) {
+                        alert("Error deleting tag: " + error.message);
+                    } else {
+                        itemTags.value = itemTags.value.filter(t => t.id !== id);
+                    }
+                };
+
+                const formatTrigger = (val) => {
+                   if(selectedItem.value?.options) {
+                       return selectedItem.value.options[val] || val;
+                   }
+                   return val.toUpperCase();
+                };
+
+                return {
+                    groups,
+                    activeGroup,
+                    selectedItem,
+                    searchQuery,
+                    filteredItems,
+                    selectItem,
+                    defaultsMap,
+                    itemTags,
+                    loading,
+                    saveAll,
+                    showAddTagModal,
+                    newTag,
+                    addTag,
+                    deleteTag,
+                    formatTrigger
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
