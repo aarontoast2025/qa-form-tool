@@ -1,7 +1,6 @@
 (function(){
   if(document.getElementById('qa-modal-overlay')) return;
 
-  // Supabase Configuration
   const SUPABASE_URL = "https://lobhwknisejjvubweall.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvYmh3a25pc2VqanZ1YndlYWxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1Nzk4NjIsImV4cCI6MjA4NDE1NTg2Mn0.2OTSmBD62Fgcecuxps6YoaW9-lPPu1MFA7cWl1g9MUk";
 
@@ -67,10 +66,45 @@
         checked: false,
         groupName: g.name,
         itemId: item.id,
-        itemType: item.options ? 'select' : 'toggle'
+        itemType: item.options ? 'select' : 'toggle',
+        selectedTags: [] // Store selected tag objects {label, feedback}
       };
     });
   });
+
+  // Fetch Tags and Defaults globally
+  let globalTags = [];
+  let globalDefaults = {};
+
+  const initData = async () => {
+    try {
+        // Fetch Defaults
+        const respDefs = await fetch(`${SUPABASE_URL}/rest/v1/qa_defaults?select=*`, {
+            headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+        });
+        const dataDefs = await respDefs.json();
+        dataDefs.forEach(row => {
+            const key = `${row.group_name}-${row.item_id}-${row.response_value}`;
+            globalDefaults[key] = row.feedback_text;
+        });
+
+        // Fetch Tags
+        const respTags = await fetch(`${SUPABASE_URL}/rest/v1/qa_tags?select=*`, {
+            headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+        });
+        globalTags = await respTags.json();
+        
+        // Refresh UI if modal is open (simple re-render or event dispatch could work, 
+        // but for now we rely on the user interacting after load)
+        // Ideally we should render after fetch, but to keep UI responsive we render first.
+        // We will trigger a "redraw" of active tag sections.
+        document.dispatchEvent(new Event('qa-data-loaded'));
+    } catch (e) {
+        console.error("Supabase fetch failed:", e);
+    }
+  };
+  
+  initData();
 
   const createElement = (tag, css) => {
     const el = document.createElement(tag);
@@ -98,6 +132,9 @@
   const sFooter = "padding:16px;border-top:1px solid #e0e0e0;display:flex;gap:12px;justify-content:flex-end";
   const sBtnCancel = "padding:8px 16px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;font-size:14px;color:#333";
   const sBtnGenerate = "padding:8px 16px;border:none;background:#2563eb;color:white;border-radius:4px;cursor:pointer;font-size:14px;font-weight:500";
+  const sTagContainer = "display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px";
+  const sTag = "padding:4px 8px;border:1px solid #ccc;border-radius:12px;font-size:11px;cursor:pointer;background:#f0f0f0;color:#333;transition:all 0.2s";
+  const sTagActive = "padding:4px 8px;border:1px solid #2563eb;border-radius:12px;font-size:11px;cursor:pointer;background:#dbeafe;color:#1e40af;font-weight:500;transition:all 0.2s";
 
   const overlay = createElement("div", sOverlay);
   overlay.id = "qa-modal-overlay";
@@ -105,7 +142,7 @@
   
   let isDragging = false, startX = 0, startY = 0, initialX = 0, initialY = 0;
   const header = createElement("div", sHeader);
-  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v2.4</span>`;
+  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v2.5</span>`;
   
   addListener(header, "mousedown", (e) => {
     if(e.target === header || e.target.parentNode === header) {
@@ -158,6 +195,37 @@
 
       let expanded = false;
       const itemBody = createElement("div", sItemBody);
+      const tagContainer = createElement("div", sTagContainer); // Container for tags
+
+      const renderTags = () => {
+        tagContainer.innerHTML = "";
+        const currentSel = state[key].sel; // 'yes', 'no', or int
+        // Filter tags for this item and current selection
+        const relevantTags = globalTags.filter(t => 
+            t.group_name === group.name && 
+            t.item_id === item.id && 
+            String(t.response_value) === String(currentSel)
+        );
+
+        relevantTags.forEach(tagData => {
+            const tagBtn = createElement("div", sTag);
+            tagBtn.textContent = tagData.tag_label;
+            
+            // Check if active
+            const isActive = state[key].selectedTags.some(t => t.id === tagData.id);
+            if(isActive) tagBtn.style.cssText = sTagActive;
+
+            addListener(tagBtn, "click", () => {
+                if(isActive) {
+                    state[key].selectedTags = state[key].selectedTags.filter(t => t.id !== tagData.id);
+                } else {
+                    state[key].selectedTags.push(tagData);
+                }
+                renderTags(); // Re-render to update state style
+            });
+            tagContainer.appendChild(tagBtn);
+        });
+      };
 
       const updateHeaderBg = () => {
         if (state[key].text.trim().length > 0) {
@@ -176,7 +244,11 @@
           if (idx === state[key].sel) o.selected = true;
           select.appendChild(o);
         });
-        addListener(select, "change", (e) => state[key].sel = parseInt(e.target.value));
+        addListener(select, "change", (e) => {
+            state[key].sel = parseInt(e.target.value);
+            state[key].selectedTags = []; // Reset tags on selection change
+            renderTags();
+        });
         itemBody.appendChild(select);
       } else {
         const btnYes = createElement("button", sBtnActive);
@@ -191,11 +263,15 @@
           state[key].sel = val;
           btnYes.style.cssText = val === "yes" ? sBtnActive : sBtnInactive;
           btnNo.style.cssText = val === "no" ? sBtnActive : sBtnInactive;
+          state[key].selectedTags = []; // Reset tags on selection change
+          renderTags();
         };
         addListener(btnYes, "click", () => updateBtnStyle("yes"));
         addListener(btnNo, "click", () => updateBtnStyle("no"));
         itemBody.appendChild(btnGroup);
       }
+
+      itemBody.appendChild(tagContainer); // Add tags below controls
 
       const textarea = createElement("textarea", sTextarea);
       textarea.placeholder = "Comments...";
@@ -210,6 +286,12 @@
         itemBody.style.display = expanded ? "block" : "none";
         updateHeaderBg();
         arrow.textContent = expanded ? "▲" : "▼";
+        if(expanded && globalTags.length > 0) renderTags(); // Render tags on expand
+      });
+
+      // Listen for global data load to refresh tags if already open
+      document.addEventListener('qa-data-loaded', () => {
+          if(expanded) renderTags();
       });
 
       itemContainer.appendChild(itemHeader);
@@ -233,24 +315,6 @@
   };
 
   addListener(btnGenerate, "click", async () => {
-    // 1. Fetch defaults from Supabase
-    let supabaseDefaults = {};
-    try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/qa_defaults?select=*`, {
-            headers: {
-                "apikey": SUPABASE_KEY,
-                "Authorization": `Bearer ${SUPABASE_KEY}`
-            }
-        });
-        const data = await response.json();
-        data.forEach(row => {
-            const key = `${row.group_name}-${row.item_id}-${row.response_value}`;
-            supabaseDefaults[key] = row.feedback_text;
-        });
-    } catch (e) {
-        console.error("Supabase fetch failed:", e);
-    }
-
     const allKeys = Object.keys(state);
     const checkedKeys = allKeys.filter(k => state[k].checked);
     const targetKeys = checkedKeys.length > 0 ? checkedKeys : allKeys;
@@ -287,9 +351,17 @@
           const freshQuestion = container ? container.querySelector(`[data-idx="${s.itemId}"]`) : null;
           
           if(freshQuestion) {
-             // Logic: Manual text takes priority. If empty, look up Supabase default.
-             const lookupKey = `${s.groupName}-${s.itemId}-${s.sel}`;
-             const finalText = s.text.trim() || supabaseDefaults[lookupKey] || "";
+             // Logic: Manual > Selected Tags (Combined) > Default
+             let finalText = s.text.trim();
+             
+             if(!finalText) {
+                 if(s.selectedTags.length > 0) {
+                     finalText = s.selectedTags.map(t => t.tag_feedback).join(" ");
+                 } else {
+                     const lookupKey = `${s.groupName}-${s.itemId}-${s.sel}`;
+                     finalText = globalDefaults[lookupKey] || "";
+                 }
+             }
 
              if(finalText) {
                 const txtArea = freshQuestion.querySelector('textarea');
