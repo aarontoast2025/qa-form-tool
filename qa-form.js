@@ -22,26 +22,26 @@
       items: [
         {id:1,label:"Resolution",reverse:!1},
         {id:2,label:"Escalation",reverse:!1},
-        {id:3,label:"Follow-up",reverse:!0},
-        {id:4,label:"Article Context",reverse:!0},
+        {id:3,label:"Failed Follow-up",reverse:!0},
+        {id:4,label:"Out of Context Article",reverse:!0},
         {id:5,label:"Reach-out (8h)",reverse:!1},
         {id:6,label:"Expectations",reverse:!1},
-        {id:7,label:"Contact Method",reverse:!0},
+        {id:7,label:"Wrong Contact Method",reverse:!0},
         {id:8,label:"Written Comm",reverse:!1},
         {id:9,label:"Internal Comm",reverse:!1},
         {id:10,label:"1case1issue",reverse:!1},
         {id:11,label:"Case Notes",reverse:!1},
         {id:12,label:"Account Info",reverse:!1},
-        {id:13,label:"Expert Needed",options:["Yes","No","N/A"]},
-        {id:14,label:"Case Staging",options:["Correct","Pend Cx (Care)","Pend Care (Cx)","ResProp (Cx)","ResProp (Care)","Merged"]},
-        {id:15,label:"Mistreat/Avoid",options:["No","Rude","False Phone","Hung Up","Exc. Holds","Denied Transfer","Survey Avoid","Avoid (Notes)","Avoid (ResProp)","No POS","No SSN","Verification"]},
-        {id:16,label:"Temp Start",options:["Churn","Upset","Neutral","Happy"]},
-        {id:17,label:"Temp End",options:["Churn","Upset","Neutral","Happy"]},
+        {id:13,label:"Expert Needed",options:['Yes', 'No', 'N/A']},
+        {id:14,label:"Incorrect Case Staging",options:['No - staged correctly', 'Yes - pending cx instead of pending care', 'Yes - pending care instead of pending cx', 'Yes - res proposed (instead of pending cx)', 'Yes - res proposed (instead of pending Care)', "Yes - merged case when shouldn't have"]},
+        {id:15,label:"Mistreat/Avoid",options:['No', 'Yes - Rude to Cx', 'Yes - False phone interactions', 'Yes - hung up on cx', 'Yes - excessive holds (caused cx to hang up)', 'Yes - Denied Transfer', 'Yes - Survey Avoidance', 'Yes - Case Avoidance (assigned case, then sent back to same queue with no notes or adjustment to subject line)', 'Yes - Case Avoidance (Case set to Resolution Proposed, without solving the issue)', 'Yes-Changes made without asking for POS code', 'Yes -Changes made without asking for SSN (payroll only)', 'Yes - Verification Process not followed (fraud) ']},
+        {id:16,label:"Temp Start",options:['Churn', 'Upset', 'Neutral', 'Happy']},
+        {id:17,label:"Temp End",options:['Churn', 'Upset', 'Neutral', 'Happy']},
         {id:18,label:"Temp Worsen",reverse:!1},
-        {id:19,label:"Complexity",options:["Training","HW/SW","Non-intuitive","Broken","Complicated","Follow-up","Simple","Complex Proc","Feature Req"]},
-        {id:20,label:"Related Cases",options:["1","2","3","4","5","6","7","8","9","10+"]},
-        {id:21,label:"Case Owners",options:["1","2","3","4","5","6","7","8","9","10+"]},
-        {id:22,label:"Root Cause",options:["Waiting","Escalated","Avoidance","Policy","Simple Gap","Complex Gap","N/A"]}
+        {id:19,label:"Complexity",options:['Training Opportunities (basic)', 'HW/SW troubleshooting (basic)', 'Non-intuitive/not understanding how something works', 'Something is broken/RF', 'Really complicated issue', 'Follow up on another case', 'Simple Task for Care or Team outside of Care', 'Complex Process', 'Feature Request']},
+        {id:20,label:"Related Cases",options:['1', '2', '3', '4', '5', '6', '7', '8', '9', '10+']},
+        {id:21,label:"Case Owners",options:['1', '2', '3', '4', '5', '6', '7', '8', '9', '10+']},
+        {id:22,label:"Root Cause",options:['In Progress - Waiting on Other team', 'Improperly Escalated', 'Work Avoidance', 'Unclear Policy/Process', 'Simple Knowledge Gap', 'Complex Knowledge Gap', 'N/A']}
       ]
     }
   ];
@@ -71,7 +71,6 @@
     el.addEventListener(event, handler);
   };
 
-  // Styles
   const sOverlay = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.2);display:flex;align-items:flex-start;justify-content:center;z-index:99999;font-family:system-ui,sans-serif;padding-top:20px;overflow-y:auto;pointer-events:none";
   const sModal = "background:white;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.15);width:90%;max-width:550px;height:80vh;max-height:800px;overflow:hidden;display:flex;flex-direction:column;cursor:grab;user-select:none;margin-bottom:20px;pointer-events:auto";
   const sHeader = "padding:15px 20px;border-bottom:1px solid #e0e0e0;font-size:18px;font-weight:600;color:#333;cursor:grab;display:flex;justify-content:space-between;align-items:center";
@@ -91,13 +90,11 @@
 
   const overlay = createElement("div", sOverlay);
   overlay.id = "qa-modal-overlay";
-
   const modal = createElement("div", sModal);
   
-  // Drag logic
   let isDragging = false, startX = 0, startY = 0, initialX = 0, initialY = 0;
   const header = createElement("div", sHeader);
-  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v2.0</span>`;
+  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v2.1</span>`;
   
   addListener(header, "mousedown", (e) => {
     if(e.target === header || e.target.parentNode === header) {
@@ -120,7 +117,6 @@
   });
 
   const contentContainer = createElement("div", sContent);
-  
   groups.forEach(group => {
     const groupTitle = createElement("div", sGroupHeader);
     groupTitle.textContent = group.name;
@@ -130,28 +126,22 @@
       const key = `${group.name}-${item.id}`;
       const itemContainer = createElement("div", sItemContainer);
       const itemHeader = createElement("div", sItemHeader);
-      
       const leftGroup = createElement("div");
       leftGroup.style.cssText = "display:flex;align-items:center;gap:10px";
 
       const checkbox = createElement("input");
       checkbox.type = "checkbox";
       checkbox.style.cursor = "pointer";
-      addListener(checkbox, "click", (e) => {
-          e.stopPropagation();
-          state[key].checked = e.target.checked;
-      });
+      addListener(checkbox, "click", (e) => { e.stopPropagation(); state[key].checked = e.target.checked; });
 
       const label = createElement("span");
       label.textContent = `${item.id}. ${item.label}`;
-
       leftGroup.appendChild(checkbox);
       leftGroup.appendChild(label);
 
       const arrow = createElement("span");
       arrow.style.fontSize = "10px";
       arrow.textContent = "▼";
-
       itemHeader.appendChild(leftGroup);
       itemHeader.appendChild(arrow);
 
@@ -173,7 +163,6 @@
         btnYes.textContent = item.reverse ? "No" : "Yes";
         const btnNo = createElement("button", sBtnInactive);
         btnNo.textContent = item.reverse ? "Yes" : "No";
-
         const btnGroup = createElement("div", sBtnGroup);
         btnGroup.appendChild(btnYes);
         btnGroup.appendChild(btnNo);
@@ -232,11 +221,9 @@
         overlay.remove();
         return;
       }
-      
       const key = targetKeys[index];
       const s = state[key];
       const container = findGroupContainer(s.groupName);
-      
       if(container) {
         const question = container.querySelector(`[data-idx="${s.itemId}"]`);
         if(question) {
@@ -250,9 +237,7 @@
                 else if(s.sel === "no" && buttons[1]) buttons[1].click();
             }
           }
-          
           await new Promise(r => setTimeout(r, 2000));
-          
           const txtArea = question.querySelector('textarea');
           if(txtArea && s.text) {
             const proto = Object.getPrototypeOf(txtArea);
@@ -263,7 +248,6 @@
           }
         }
       }
-      
       await new Promise(r => setTimeout(r, 500));
       index++;
       processNext();
@@ -278,5 +262,4 @@
   modal.appendChild(footer);
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
-
 })();
