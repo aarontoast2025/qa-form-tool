@@ -102,7 +102,7 @@
   
   let isDragging = false, startX = 0, startY = 0, initialX = 0, initialY = 0;
   const header = createElement("div", sHeader);
-  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v2.2</span>`;
+  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v2.3</span>`;
   
   addListener(header, "mousedown", (e) => {
     if(e.target === header || e.target.parentNode === header) {
@@ -158,7 +158,7 @@
 
       const updateHeaderBg = () => {
         if (state[key].text.trim().length > 0) {
-            itemHeader.style.background = "#e0e7ff"; // Light grayish-blue
+            itemHeader.style.background = "#e0e7ff";
         } else {
             itemHeader.style.background = expanded ? "#e8e8e8" : "#f5f5f5";
         }
@@ -243,10 +243,14 @@
       }
       const key = targetKeys[index];
       const s = state[key];
-      const container = findGroupContainer(s.groupName);
+      let container = findGroupContainer(s.groupName);
+      
       if(container) {
+        // Find question relative to fresh container reference
         const question = container.querySelector(`[data-idx="${s.itemId}"]`);
+        
         if(question) {
+          // Click Logic
           const control = question.querySelector('[data-testid="SegmentedControl"]');
           if(control) {
             const buttons = Array.from(control.querySelectorAll('button'));
@@ -257,17 +261,30 @@
                 else if(s.sel === "no" && buttons[1]) buttons[1].click();
             }
           }
-          await new Promise(r => setTimeout(r, 2000));
-          const txtArea = question.querySelector('textarea');
-          if(txtArea && s.text) {
-            const proto = Object.getPrototypeOf(txtArea);
-            const setter = Object.getOwnPropertyDescriptor(proto, "value").set;
-            if(setter) setter.call(txtArea, s.text); else txtArea.value = s.text;
-            txtArea.dispatchEvent(new Event("input", { bubbles: true }));
-            txtArea.dispatchEvent(new Event("change", { bubbles: true }));
+          
+          // Wait 2.5s for UI updates (e.g. comment box appearing)
+          await new Promise(r => setTimeout(r, 2500));
+          
+          // RE-QUERY DOM to find the textarea. 
+          // The page might have re-rendered the question row, so we need a fresh lookup.
+          // We search for the container again to be safe, or search globally if we assume uniqueness.
+          // Using findGroupContainer again to ensure freshness if entire group re-rendered.
+          container = findGroupContainer(s.groupName); 
+          const freshQuestion = container ? container.querySelector(`[data-idx="${s.itemId}"]`) : null;
+          
+          if(freshQuestion && s.text) {
+             const txtArea = freshQuestion.querySelector('textarea');
+             if(txtArea) {
+                const proto = Object.getPrototypeOf(txtArea);
+                const setter = Object.getOwnPropertyDescriptor(proto, "value").set;
+                if(setter) setter.call(txtArea, s.text); else txtArea.value = s.text;
+                txtArea.dispatchEvent(new Event("input", { bubbles: true }));
+                txtArea.dispatchEvent(new Event("change", { bubbles: true }));
+             }
           }
         }
       }
+      
       await new Promise(r => setTimeout(r, 500));
       index++;
       processNext();
