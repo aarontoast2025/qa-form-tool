@@ -452,63 +452,8 @@
   addListener(btnCancel, "click", () => overlay.remove());
 
   const btnGenerate = createElement("button", sBtnGenerate);
-  btnGenerate.textContent = "Generate";
+  btnGenerate.textContent = "Generate & Save";
   
-  const btnSave = createElement("button");
-  btnSave.textContent = "Save";
-  btnSave.style.cssText = sBtnGenerate.replace("#2563eb", "#059669"); // Green color for Save
-  
-  const saveToSupabase = async () => {
-      btnSave.textContent = "Saving... ⏳";
-      btnSave.disabled = true;
-      btnSave.style.opacity = "0.7";
-      
-      const payload = {
-          interaction_id: fInteractionId.input.value,
-          advocate_name: fAdvocateName.input.value,
-          call_ani: fCallAni.input.value,
-          date_interaction: fDateInteraction.input.value,
-          date_evaluation: fDateEvaluation.input.value,
-          case_category: fCaseCategory.input.value,
-          issue_concern: fIssueConcern.input.value,
-          // Simplify state for storage (remove DOM refs)
-          form_data: Object.fromEntries(Object.entries(state).map(([k, v]) => [k, { 
-              sel: v.sel, 
-              text: v.text, 
-              checked: v.checked,
-              tags: v.selectedTags.map(t => t.tag_label) 
-          }]))
-      };
-      
-      try {
-          const resp = await fetch(`${SUPABASE_URL}/rest/v1/qa_evaluations`, {
-             method: 'POST',
-             headers: { 
-                 "apikey": SUPABASE_KEY, 
-                 "Authorization": `Bearer ${SUPABASE_KEY}`,
-                 "Content-Type": "application/json",
-                 "Prefer": "return=minimal"
-             },
-             body: JSON.stringify(payload)
-          });
-          
-          if(!resp.ok) {
-              const err = await resp.json();
-              throw err;
-          }
-          alert("Evaluation saved to database! 💾");
-      } catch(e) {
-          console.error(e);
-          alert("Error saving: " + (e.message || "Unknown error"));
-      } finally {
-          btnSave.textContent = "Save";
-          btnSave.disabled = false;
-          btnSave.style.opacity = "1";
-      }
-  };
-  
-  addListener(btnSave, "click", saveToSupabase);
-
   const findGroupContainer = (name) => {
     const h2s = Array.from(document.querySelectorAll('h2'));
     const h2 = h2s.find(el => el.textContent.trim().includes(name));
@@ -530,7 +475,47 @@
     let index = 0;
     const processNext = async () => {
       if(index >= targetKeys.length) {
-        alert("✓ Done!");
+        // --- Generation Complete, Now Save ---
+        btnGenerate.textContent = "Saving... ⏳";
+        
+        const payload = {
+            interaction_id: fInteractionId.input.value,
+            advocate_name: fAdvocateName.input.value,
+            call_ani: fCallAni.input.value,
+            date_interaction: fDateInteraction.input.value,
+            date_evaluation: fDateEvaluation.input.value,
+            case_category: fCaseCategory.input.value,
+            issue_concern: fIssueConcern.input.value,
+            form_data: Object.fromEntries(Object.entries(state).map(([k, v]) => [k, { 
+                sel: v.sel, 
+                text: v.text, 
+                checked: v.checked,
+                tags: v.selectedTags.map(t => t.tag_label) 
+            }]))
+        };
+
+        try {
+            const resp = await fetch(`${SUPABASE_URL}/rest/v1/qa_evaluations`, {
+               method: 'POST',
+               headers: { 
+                   "apikey": SUPABASE_KEY, 
+                   "Authorization": `Bearer ${SUPABASE_KEY}`,
+                   "Content-Type": "application/json",
+                   "Prefer": "return=minimal"
+               },
+               body: JSON.stringify(payload)
+            });
+            
+            if(!resp.ok) {
+                const err = await resp.json();
+                throw err;
+            }
+            alert("✓ Generated and Saved to Database! 💾");
+        } catch(e) {
+            console.error(e);
+            alert("Generated, but error saving: " + (e.message || "Unknown error"));
+        }
+        
         // Restore State
         btnGenerate.textContent = originalText;
         btnGenerate.disabled = false;
@@ -599,7 +584,6 @@
 
   footer.appendChild(btnCancel);
   footer.appendChild(btnGenerate);
-  footer.appendChild(btnSave);
   modal.appendChild(header);
   modal.appendChild(contentContainer);
   modal.appendChild(footer);
