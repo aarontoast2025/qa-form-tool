@@ -201,10 +201,6 @@
 
   const contentContainer = createElement("div", sContent);
 
-  // --- New Header Fields ---
-  const headerFieldsContainer = createElement("div");
-  headerFieldsContainer.style.cssText = "display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #eee";
-
   const createCompactField = (placeholder, icon, type = "text", fullWidth = false, useLabel = false) => {
       const wrapper = createElement("div");
       if(fullWidth) wrapper.style.gridColumn = "1 / -1"; 
@@ -250,6 +246,10 @@
           return { div: wrapper, input };
       }
   };
+
+  // --- New Header Fields ---
+  const headerFieldsContainer = createElement("div");
+  headerFieldsContainer.style.cssText = "display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #eee";
 
   // Row 1 (3 columns)
   const fInteractionId = createCompactField("Interaction ID", "🆔");
@@ -481,7 +481,7 @@
       };
       
       try {
-          const { error } = await fetch(`${SUPABASE_URL}/rest/v1/qa_evaluations`, {
+          const resp = await fetch(`${SUPABASE_URL}/rest/v1/qa_evaluations`, {
              method: 'POST',
              headers: { 
                  "apikey": SUPABASE_KEY, 
@@ -490,9 +490,12 @@
                  "Prefer": "return=minimal"
              },
              body: JSON.stringify(payload)
-          }).then(r => r.json().then(data => ({ data, error: !r.ok ? data : null }))); // Fetch wrapper for simple error handling
+          });
           
-          if(error) throw error;
+          if(!resp.ok) {
+              const err = await resp.json();
+              throw err;
+          }
           alert("Evaluation saved to database! 💾");
       } catch(e) {
           console.error(e);
@@ -505,11 +508,8 @@
   };
   
   addListener(btnSave, "click", saveToSupabase);
-  
-  footer.appendChild(btnCancel);
-  footer.appendChild(btnGenerate);
-  footer.appendChild(btnSave); // Ensure button is appended
 
+  const findGroupContainer = (name) => {
     const h2s = Array.from(document.querySelectorAll('h2'));
     const h2 = h2s.find(el => el.textContent.trim().includes(name));
     return h2 ? h2.closest('.padding-xlarge') : null;
@@ -599,6 +599,7 @@
 
   footer.appendChild(btnCancel);
   footer.appendChild(btnGenerate);
+  footer.appendChild(btnSave);
   modal.appendChild(header);
   modal.appendChild(contentContainer);
   modal.appendChild(footer);
