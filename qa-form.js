@@ -148,7 +148,10 @@
   
   const sBtnBase = "flex:1;padding:8px;border:1px solid;border-radius:4px;cursor:pointer;font-weight:500;font-size:12px;transition:all 0.2s";
   const sSelect = "width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;margin-bottom:8px;font-size:13px";
-  const sTextarea = "width:100%;border:1px solid #ccc;border-radius:4px;padding:8px;font-family:inherit;resize:none;height:50px;font-size:13px";
+  const sTextarea = "width:100%;border:1px solid #ccc;border-radius:4px;padding:8px;font-family:inherit;resize:vertical;height:50px;font-size:13px";
+  const sInput = "width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;font-size:13px;box-sizing:border-box";
+  const sLabel = "display:block;margin-bottom:4px;font-weight:600;font-size:12px;color:#333";
+  const sFieldGroup = "margin-bottom:12px";
   const sFooter = "padding:16px;border-top:1px solid #e0e0e0;display:flex;gap:12px;justify-content:flex-end";
   const sBtnCancel = "padding:8px 16px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;font-size:14px;color:#333";
   const sBtnGenerate = "padding:8px 16px;border:none;background:#2563eb;color:white;border-radius:4px;cursor:pointer;font-size:14px;font-weight:500";
@@ -197,6 +200,58 @@
   });
 
   const contentContainer = createElement("div", sContent);
+
+  // --- New Header Fields ---
+  const headerFieldsContainer = createElement("div");
+  headerFieldsContainer.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #eee";
+
+  const createField = (labelText, type = "text", placeholder = "", fullWidth = false) => {
+      const div = createElement("div");
+      if(fullWidth) div.style.gridColumn = "span 2";
+      const lbl = createElement("label");
+      lbl.textContent = labelText;
+      lbl.style.cssText = sLabel;
+      
+      let input;
+      if(type === "textarea") {
+          input = createElement("textarea");
+          input.style.cssText = sTextarea;
+          input.style.height = "80px";
+      } else {
+          input = createElement("input");
+          input.type = type;
+          input.style.cssText = sInput;
+      }
+      if(placeholder) input.placeholder = placeholder;
+      
+      div.appendChild(lbl);
+      div.appendChild(input);
+      return { div, input };
+  };
+
+  const fInteractionId = createField("Interaction ID");
+  const fAdvocateName = createField("Advocate Name");
+  const fDateInteraction = createField("Date of Interaction", "date"); // Using date input for easier picking, can be text if strictly mm/dd/yy format needed manually
+  const fDateEvaluation = createField("Date of Evaluation", "date");
+  
+  // Set default Date of Evaluation to today
+  fDateEvaluation.input.valueAsDate = new Date();
+
+  const fCallAni = createField("Call ANI/DNIS");
+  const fCaseCategory = createField("Case Category");
+  const fIssueConcern = createField("Issue/Concern", "textarea", "", true);
+
+  headerFieldsContainer.appendChild(fInteractionId.div);
+  headerFieldsContainer.appendChild(fAdvocateName.div);
+  headerFieldsContainer.appendChild(fDateInteraction.div);
+  headerFieldsContainer.appendChild(fDateEvaluation.div);
+  headerFieldsContainer.appendChild(fCallAni.div);
+  headerFieldsContainer.appendChild(fCaseCategory.div);
+  headerFieldsContainer.appendChild(fIssueConcern.div);
+
+  contentContainer.appendChild(headerFieldsContainer);
+  // --- End New Header Fields ---
+
   groups.forEach(group => {
     const groupTitle = createElement("div", sGroupHeader);
     groupTitle.textContent = group.name;
@@ -375,6 +430,13 @@
   };
 
   addListener(btnGenerate, "click", async () => {
+    // Loading State
+    const originalText = btnGenerate.textContent;
+    btnGenerate.textContent = "Generating... ⏳";
+    btnGenerate.disabled = true;
+    btnGenerate.style.opacity = "0.7";
+    btnGenerate.style.cursor = "not-allowed";
+
     const allKeys = Object.keys(state);
     const checkedKeys = allKeys.filter(k => state[k].checked);
     const targetKeys = checkedKeys.length > 0 ? checkedKeys : allKeys;
@@ -383,6 +445,12 @@
     const processNext = async () => {
       if(index >= targetKeys.length) {
         alert("✓ Done!");
+        // Restore State
+        btnGenerate.textContent = originalText;
+        btnGenerate.disabled = false;
+        btnGenerate.style.opacity = "1";
+        btnGenerate.style.cursor = "pointer";
+        
         overlay.remove();
         return;
       }
