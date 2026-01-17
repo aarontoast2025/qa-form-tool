@@ -15,9 +15,15 @@
         <div class="min-h-screen flex flex-col">
             <header class="bg-blue-700 text-white shadow-md">
                 <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-                    <div class="flex items-center gap-3">
-                        <i class="fa-solid fa-toolbox text-2xl"></i>
-                        <h1 class="text-xl font-bold">QA Form Admin v2.8</h1>
+                    <div class="flex items-center gap-6">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-toolbox text-2xl"></i>
+                            <h1 class="text-xl font-bold">QA Form Admin v2.9</h1>
+                        </div>
+                        <nav class="flex space-x-1">
+                            <button @click="currentView = 'config'" :class="['px-3 py-2 rounded text-sm font-medium transition-colors', currentView === 'config' ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-600']">Configuration</button>
+                            <button @click="currentView = 'evaluations'" :class="['px-3 py-2 rounded text-sm font-medium transition-colors', currentView === 'evaluations' ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-600']">Evaluations</button>
+                        </nav>
                     </div>
                     <div class="text-xs bg-blue-800 px-3 py-1 rounded border border-blue-600">
                         <i class="fa-solid fa-database mr-1"></i> Connected to Supabase
@@ -25,106 +31,186 @@
                 </div>
             </header>
 
-            <main class="flex-1 container mx-auto px-4 py-6 flex gap-6">
-                <div class="w-1/3 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col h-[85vh]">
-                    <div class="flex border-b">
-                        <button v-for="g in groups" :key="g.name" @click="activeGroup = g.name; selectedItem = null" :class="['flex-1 py-3 text-sm font-semibold text-center transition-colors', activeGroup === g.name ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-50']">{{ g.name }}</button>
-                    </div>
-                    <div class="p-3 border-b">
-                        <input v-model="searchQuery" type="text" placeholder="Search items..." class="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-blue-500">
-                    </div>
-                    <div class="flex-1 overflow-y-auto">
-                        <div v-for="item in filteredItems" :key="item.id" @click="selectItem(item)" :class="['px-4 py-3 border-b cursor-pointer hover:bg-gray-50 transition-colors flex justify-between items-center', selectedItem?.id === item.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : 'border-l-4 border-l-transparent']">
-                            <div>
-                                <span class="text-xs font-bold text-gray-400 mr-2">#{{ item.id }}</span>
-                                <span class="text-sm font-medium text-gray-700">{{ item.label }}</span>
-                                <span v-if="item.reverse" class="ml-2 text-[10px] bg-purple-100 text-purple-700 px-1 rounded border border-purple-200">REVERSED</span>
+            <main class="flex-1 container mx-auto px-4 py-6">
+                <!-- VIEW: CONFIGURATION -->
+                <div v-show="currentView === 'config'" class="flex gap-6 h-[85vh]">
+                    <div class="w-1/3 bg-white rounded-lg shadow-sm overflow-hidden flex flex-col">
+                        <div class="flex border-b">
+                            <button v-for="g in groups" :key="g.name" @click="activeGroup = g.name; selectedItem = null" :class="['flex-1 py-3 text-sm font-semibold text-center transition-colors', activeGroup === g.name ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600' : 'text-gray-500 hover:bg-gray-50']">{{ g.name }}</button>
+                        </div>
+                        <div class="p-3 border-b">
+                            <input v-model="searchQuery" type="text" placeholder="Search items..." class="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div class="flex-1 overflow-y-auto">
+                            <div v-for="item in filteredItems" :key="item.id" @click="selectItem(item)" :class="['px-4 py-3 border-b cursor-pointer hover:bg-gray-50 transition-colors flex justify-between items-center', selectedItem?.id === item.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : 'border-l-4 border-l-transparent']">
+                                <div>
+                                    <span class="text-xs font-bold text-gray-400 mr-2">#{{ item.id }}</span>
+                                    <span class="text-sm font-medium text-gray-700">{{ item.label }}</span>
+                                    <span v-if="item.reverse" class="ml-2 text-[10px] bg-purple-100 text-purple-700 px-1 rounded border border-purple-200">REVERSED</span>
+                                </div>
+                                <i class="fa-solid fa-chevron-right text-xs text-gray-300"></i>
                             </div>
-                            <i class="fa-solid fa-chevron-right text-xs text-gray-300"></i>
+                        </div>
+                    </div>
+
+                    <div class="w-2/3 bg-white rounded-lg shadow-sm p-6 overflow-y-auto">
+                        <div v-if="selectedItem">
+                            <div class="flex justify-between items-start mb-6 border-b pb-4">
+                                <div>
+                                    <h2 class="text-2xl font-bold text-gray-800">{{ selectedItem.label }}</h2>
+                                    <p class="text-sm text-gray-500 mt-1">Group: <span class="font-semibold">{{ activeGroup }}</span> | Type: <span class="bg-gray-100 px-2 py-0.5 rounded text-xs">{{ selectedItem.options ? 'Dropdown' : 'Yes/No Toggle' }}</span></p>
+                                </div>
+                                <button @click="saveAll" :disabled="loading" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow text-sm font-medium transition-colors"><i class="fa-solid fa-save mr-2"></i> {{ loading ? 'Saving...' : 'Save Changes' }}</button>
+                            </div>
+
+                            <div class="mb-8">
+                                <h3 class="text-lg font-bold text-gray-700 mb-4 border-l-4 border-blue-500 pl-3">Default Feedback</h3>
+                                
+                                <div v-if="!selectedItem.options" class="grid grid-cols-2 gap-4">
+                                    <div class="bg-gray-50 p-4 rounded border">
+                                        <div class="flex justify-between mb-2">
+                                            <label class="font-bold text-sm text-gray-700">Left Button ({{ selectedItem.reverse ? "No" : "Yes" }})</label>
+                                            <span class="text-xs text-green-500 font-bold bg-green-100 px-2 rounded">GOOD Outcome</span>
+                                        </div>
+                                        <p class="text-xs text-gray-400 mb-2">Database Value: 'yes'</p>
+                                        <textarea v-model="defaultsMap['yes']" class="w-full h-24 p-2 text-sm border rounded focus:ring-1 focus:ring-blue-500" placeholder="Feedback for GOOD outcome..."></textarea>
+                                    </div>
+                                    <div class="bg-gray-50 p-4 rounded border">
+                                        <div class="flex justify-between mb-2">
+                                            <label class="font-bold text-sm text-gray-700">Right Button ({{ selectedItem.reverse ? "Yes" : "No" }})</label>
+                                            <span class="text-xs text-red-500 font-bold bg-red-100 px-2 rounded">BAD Outcome</span>
+                                        </div>
+                                        <p class="text-xs text-gray-400 mb-2">Database Value: 'no'</p>
+                                        <textarea v-model="defaultsMap['no']" class="w-full h-24 p-2 text-sm border rounded focus:ring-1 focus:ring-blue-500" placeholder="Feedback for BAD outcome..."></textarea>
+                                    </div>
+                                </div>
+
+                                <div v-else class="space-y-3">
+                                    <div v-for="(opt, idx) in selectedItem.options" :key="idx" class="flex gap-4 items-start bg-gray-50 p-3 rounded border">
+                                        <div class="w-1/3 pt-2">
+                                            <span class="text-xs font-bold text-gray-400 block mb-1">Option {{ idx }}</span>
+                                            <span class="text-sm font-medium text-gray-800">{{ opt }}</span>
+                                        </div>
+                                        <textarea v-model="defaultsMap[idx]" class="w-2/3 h-16 p-2 text-sm border rounded focus:ring-1 focus:ring-blue-500" placeholder="Feedback for this option..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="text-lg font-bold text-gray-700 border-l-4 border-purple-500 pl-3">Sub-Reason Tags (Badges)</h3>
+                                    <button @click="openAddTagModal" class="text-sm text-purple-600 hover:text-purple-800 font-semibold"><i class="fa-solid fa-plus-circle"></i> Add Tag</button>
+                                </div>
+                                <div v-if="itemTags.length === 0" class="text-center py-8 bg-gray-50 rounded border border-dashed border-gray-300 text-gray-400">No tags configured for this item.</div>
+                                <div v-else class="grid grid-cols-1 gap-3">
+                                    <div v-for="tag in itemTags" :key="tag.id" class="flex items-center gap-3 bg-white p-3 rounded shadow-sm border hover:shadow-md transition-shadow">
+                                        <div class="flex flex-col items-center justify-center w-24 bg-gray-100 rounded p-2 text-center">
+                                            <span class="text-[10px] text-gray-500 uppercase tracking-wider">Trigger</span>
+                                            <span class="font-bold text-sm text-gray-700">{{ formatTrigger(tag.response_value) }}</span>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold border border-purple-200">{{ tag.tag_label }}</span>
+                                            </div>
+                                            <p class="text-sm text-gray-600">{{ tag.tag_feedback }}</p>
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button @click="openEditTagModal(tag)" class="text-blue-400 hover:text-blue-600 p-2 transition-colors" title="Edit Tag"><i class="fa-solid fa-pencil"></i></button>
+                                            <button @click="deleteTag(tag.id)" class="text-red-400 hover:text-red-600 p-2 transition-colors" title="Delete Tag"><i class="fa-solid fa-trash"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="h-full flex flex-col items-center justify-center text-gray-400">
+                            <i class="fa-regular fa-hand-pointer text-4xl mb-4 opacity-50"></i>
+                            <p class="text-lg">Select an item from the sidebar to edit.</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="w-2/3 bg-white rounded-lg shadow-sm p-6 overflow-y-auto h-[85vh]">
-                    <div v-if="selectedItem">
-                        <div class="flex justify-between items-start mb-6 border-b pb-4">
+                <!-- VIEW: EVALUATIONS -->
+                <div v-show="currentView === 'evaluations'" class="h-[85vh] flex flex-col">
+                    <div class="bg-white p-4 rounded-lg shadow-sm mb-4 flex justify-between items-center">
+                        <div class="flex items-center gap-4">
                             <div>
-                                <h2 class="text-2xl font-bold text-gray-800">{{ selectedItem.label }}</h2>
-                                <p class="text-sm text-gray-500 mt-1">Group: <span class="font-semibold">{{ activeGroup }}</span> | Type: <span class="bg-gray-100 px-2 py-0.5 rounded text-xs">{{ selectedItem.options ? 'Dropdown' : 'Yes/No Toggle' }}</span></p>
+                                <label class="block text-xs font-bold text-gray-500 uppercase">View Type</label>
+                                <div class="flex rounded bg-gray-100 p-1 mt-1">
+                                    <button @click="evalFilterType = 'daily'" :class="['px-3 py-1 rounded text-sm font-medium transition-colors', evalFilterType === 'daily' ? 'bg-white shadow text-blue-700' : 'text-gray-500 hover:text-gray-700']">Daily</button>
+                                    <button @click="evalFilterType = 'weekly'" :class="['px-3 py-1 rounded text-sm font-medium transition-colors', evalFilterType === 'weekly' ? 'bg-white shadow text-blue-700' : 'text-gray-500 hover:text-gray-700']">Weekly</button>
+                                    <button @click="evalFilterType = 'monthly'" :class="['px-3 py-1 rounded text-sm font-medium transition-colors', evalFilterType === 'monthly' ? 'bg-white shadow text-blue-700' : 'text-gray-500 hover:text-gray-700']">Monthly</button>
+                                </div>
                             </div>
-                            <button @click="saveAll" :disabled="loading" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow text-sm font-medium transition-colors"><i class="fa-solid fa-save mr-2"></i> {{ loading ? 'Saving...' : 'Save Changes' }}</button>
-                        </div>
-
-                        <div class="mb-8">
-                            <h3 class="text-lg font-bold text-gray-700 mb-4 border-l-4 border-blue-500 pl-3">Default Feedback</h3>
                             
-                            <div v-if="!selectedItem.options" class="grid grid-cols-2 gap-4">
-                                <!-- Left Button (Always 'yes' in DB) -->
-                                <div class="bg-gray-50 p-4 rounded border">
-                                    <div class="flex justify-between mb-2">
-                                        <label class="font-bold text-sm text-gray-700">Left Button ({{ selectedItem.reverse ? "No" : "Yes" }})</label>
-                                        <span class="text-xs text-green-500 font-bold bg-green-100 px-2 rounded">GOOD Outcome</span>
-                                    </div>
-                                    <p class="text-xs text-gray-400 mb-2">Database Value: 'yes'</p>
-                                    <textarea v-model="defaultsMap['yes']" class="w-full h-24 p-2 text-sm border rounded focus:ring-1 focus:ring-blue-500" placeholder="Feedback for GOOD outcome..."></textarea>
-                                </div>
-                                <!-- Right Button (Always 'no' in DB) -->
-                                <div class="bg-gray-50 p-4 rounded border">
-                                    <div class="flex justify-between mb-2">
-                                        <label class="font-bold text-sm text-gray-700">Right Button ({{ selectedItem.reverse ? "Yes" : "No" }})</label>
-                                        <span class="text-xs text-red-500 font-bold bg-red-100 px-2 rounded">BAD Outcome</span>
-                                    </div>
-                                    <p class="text-xs text-gray-400 mb-2">Database Value: 'no'</p>
-                                    <textarea v-model="defaultsMap['no']" class="w-full h-24 p-2 text-sm border rounded focus:ring-1 focus:ring-blue-500" placeholder="Feedback for BAD outcome..."></textarea>
-                                </div>
-                            </div>
-
-                            <div v-else class="space-y-3">
-                                <div v-for="(opt, idx) in selectedItem.options" :key="idx" class="flex gap-4 items-start bg-gray-50 p-3 rounded border">
-                                    <div class="w-1/3 pt-2">
-                                        <span class="text-xs font-bold text-gray-400 block mb-1">Option {{ idx }}</span>
-                                        <span class="text-sm font-medium text-gray-800">{{ opt }}</span>
-                                    </div>
-                                    <textarea v-model="defaultsMap[idx]" class="w-2/3 h-16 p-2 text-sm border rounded focus:ring-1 focus:ring-blue-500" placeholder="Feedback for this option..."></textarea>
-                                </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase">{{ evalFilterType === 'monthly' ? 'Select Month' : 'Select Date' }}</label>
+                                <input v-if="evalFilterType === 'monthly'" type="month" v-model="evalMonth" class="mt-1 border rounded px-3 py-1.5 text-sm bg-gray-50">
+                                <input v-else type="date" v-model="evalDate" class="mt-1 border rounded px-3 py-1.5 text-sm bg-gray-50">
                             </div>
                         </div>
 
-                        <div>
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-lg font-bold text-gray-700 border-l-4 border-purple-500 pl-3">Sub-Reason Tags (Badges)</h3>
-                                <button @click="openAddTagModal" class="text-sm text-purple-600 hover:text-purple-800 font-semibold"><i class="fa-solid fa-plus-circle"></i> Add Tag</button>
-                            </div>
-
-                            <div v-if="itemTags.length === 0" class="text-center py-8 bg-gray-50 rounded border border-dashed border-gray-300 text-gray-400">No tags configured for this item.</div>
-
-                            <div v-else class="grid grid-cols-1 gap-3">
-                                <div v-for="tag in itemTags" :key="tag.id" class="flex items-center gap-3 bg-white p-3 rounded shadow-sm border hover:shadow-md transition-shadow">
-                                    <div class="flex flex-col items-center justify-center w-24 bg-gray-100 rounded p-2 text-center">
-                                        <span class="text-[10px] text-gray-500 uppercase tracking-wider">Trigger</span>
-                                        <span class="font-bold text-sm text-gray-700">{{ formatTrigger(tag.response_value) }}</span>
-                                    </div>
-                                    <div class="flex-1">
-                                        <div class="flex items-center gap-2 mb-1">
-                                            <span class="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold border border-purple-200">{{ tag.tag_label }}</span>
-                                        </div>
-                                        <p class="text-sm text-gray-600">{{ tag.tag_feedback }}</p>
-                                    </div>
-                                    <div class="flex gap-2">
-                                        <button @click="openEditTagModal(tag)" class="text-blue-400 hover:text-blue-600 p-2 transition-colors" title="Edit Tag"><i class="fa-solid fa-pencil"></i></button>
-                                        <button @click="deleteTag(tag.id)" class="text-red-400 hover:text-red-600 p-2 transition-colors" title="Delete Tag"><i class="fa-solid fa-trash"></i></button>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="text-right">
+                             <div class="text-sm font-semibold text-gray-700">Range: <span class="text-blue-600">{{ formattedDateRange }}</span></div>
+                             <div class="text-xs text-gray-400">{{ evaluations.length }} records found</div>
                         </div>
                     </div>
-                    <div v-else class="h-full flex flex-col items-center justify-center text-gray-400">
-                        <i class="fa-regular fa-hand-pointer text-4xl mb-4 opacity-50"></i>
-                        <p class="text-lg">Select an item from the sidebar to edit.</p>
+
+                    <div class="bg-white rounded-lg shadow-sm overflow-hidden flex-1 flex flex-col">
+                         <div class="overflow-auto flex-1">
+                             <table class="w-full text-left border-collapse">
+                                 <thead class="bg-gray-50 sticky top-0">
+                                     <tr>
+                                         <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b">Date (Eval)</th>
+                                         <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b">Advocate</th>
+                                         <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b">Interaction ID</th>
+                                         <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b">ANI/DNIS</th>
+                                         <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b">Category</th>
+                                         <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b text-right">Actions</th>
+                                     </tr>
+                                 </thead>
+                                 <tbody class="divide-y divide-gray-100">
+                                     <tr v-if="evaluations.length === 0">
+                                         <td colspan="6" class="px-4 py-8 text-center text-gray-400">No evaluations found for this period.</td>
+                                     </tr>
+                                     <tr v-for="ev in evaluations" :key="ev.id" class="hover:bg-gray-50">
+                                         <td class="px-4 py-3 text-sm text-gray-700">{{ ev.date_evaluation }}</td>
+                                         <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ ev.advocate_name }}</td>
+                                         <td class="px-4 py-3 text-sm text-gray-500 font-mono text-xs">{{ ev.interaction_id }}</td>
+                                         <td class="px-4 py-3 text-sm text-gray-500">{{ ev.call_ani }}</td>
+                                         <td class="px-4 py-3 text-sm text-gray-600">{{ ev.case_category }}</td>
+                                         <td class="px-4 py-3 text-sm text-right flex justify-end gap-2">
+                                             <button @click="editEval(ev)" class="text-blue-500 hover:text-blue-700" title="Edit Details"><i class="fa-solid fa-pencil"></i></button>
+                                             <button @click="deleteEval(ev.id)" class="text-red-400 hover:text-red-600" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                                         </td>
+                                     </tr>
+                                 </tbody>
+                             </table>
+                         </div>
                     </div>
                 </div>
             </main>
 
+            <!-- Edit Eval Modal -->
+            <div v-if="showEditEvalModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg shadow-xl w-[500px] p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Edit Evaluation</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2"><label class="block text-xs font-bold text-gray-500 mb-1">Advocate Name</label><input v-model="editingEval.advocate_name" type="text" class="w-full border rounded p-2 text-sm"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Interaction ID</label><input v-model="editingEval.interaction_id" type="text" class="w-full border rounded p-2 text-sm"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Call ANI</label><input v-model="editingEval.call_ani" type="text" class="w-full border rounded p-2 text-sm"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Date Interaction</label><input v-model="editingEval.date_interaction" type="date" class="w-full border rounded p-2 text-sm"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Date Evaluation</label><input v-model="editingEval.date_evaluation" type="date" class="w-full border rounded p-2 text-sm"></div>
+                        <div class="col-span-2"><label class="block text-xs font-bold text-gray-500 mb-1">Case Category</label><input v-model="editingEval.case_category" type="text" class="w-full border rounded p-2 text-sm"></div>
+                        <div class="col-span-2"><label class="block text-xs font-bold text-gray-500 mb-1">Issue/Concern</label><textarea v-model="editingEval.issue_concern" class="w-full border rounded p-2 text-sm h-20"></textarea></div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button @click="showEditEvalModal = false" class="text-gray-500 hover:text-gray-700 font-medium text-sm">Cancel</button>
+                        <button @click="updateEval" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Existing Tag Modal -->
             <div v-if="showAddTagModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div class="bg-white rounded-lg shadow-xl w-96 p-6">
                     <h3 class="text-lg font-bold text-gray-800 mb-4">{{ isEditingTag ? 'Edit Tag' : 'Add New Tag' }}</h3>
@@ -132,7 +218,6 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1">When selected option is:</label>
                         <select v-model="newTag.response_value" class="w-full border rounded p-2 text-sm bg-gray-50">
                             <template v-if="!selectedItem.options">
-                                <!-- Show Semantic labels for clarity -->
                                 <option value="yes">Left Button ({{ selectedItem.reverse ? "No" : "Yes" }}) - GOOD</option>
                                 <option value="no">Right Button ({{ selectedItem.reverse ? "Yes" : "No" }}) - BAD</option>
                             </template>
@@ -147,7 +232,7 @@
                 </div>
             </div>
         </div>
-    </div>    </div>
+    </div>
 
     <script>
         const { createClient } = supabase;
@@ -159,10 +244,11 @@
             { name: "Case Management", items: [ {id:1,label:"Resolution",reverse:!1}, {id:2,label:"Escalation",reverse:!1}, {id:3,label:"Failed Follow-up",reverse:!0}, {id:4,label:"Out of Context Article",reverse:!0}, {id:5,label:"Reach-out (8h)",reverse:!1}, {id:6,label:"Expectations",reverse:!1}, {id:7,label:"Wrong Contact Method",reverse:!0}, {id:8,label:"Written Comm",reverse:!1}, {id:9,label:"Internal Comm",reverse:!1}, {id:10,label:"1case1issue",reverse:!1}, {id:11,label:"Case Notes",reverse:!1}, {id:12,label:"Account Info",reverse:!1}, {id:13,label:"Expert Needed",options:['Yes', 'No', 'N/A']}, {id:14,label:"Incorrect Case Staging",options:['No - staged correctly', 'Yes - pending cx instead of pending care', 'Yes - pending care instead of pending cx', 'Yes - res proposed (instead of pending cx)', 'Yes - res proposed (instead of pending Care)', "Yes - merged case when shouldn't have"]}, {id:15,label:"Mistreat/Avoid",options:['No', 'Yes - Rude to Cx', 'Yes - False phone interactions', 'Yes - hung up on cx', 'Yes - excessive holds (caused cx to hang up)', 'Yes - Denied Transfer', 'Yes - Survey Avoidance', 'Yes - Case Avoidance (assigned case, then sent back to same queue with no notes or adjustment to subject line)', 'Yes - Case Avoidance (Case set to Resolution Proposed, without solving the issue)', 'Yes-Changes made without asking for POS code', 'Yes -Changes made without asking for SSN (payroll only)', 'Yes - Verification Process not followed (fraud) ']}, {id:16,label:"Temp Start",options:['Churn', 'Upset', 'Neutral', 'Happy']}, {id:17,label:"Temp End",options:['Churn', 'Upset', 'Neutral', 'Happy']}, {id:18,label:"Temp Worsen",reverse:!0}, {id:19,label:"Complexity",options:['Training Opportunities (basic)', 'HW/SW troubleshooting (basic)', 'Non-intuitive/not understanding how something works', 'Something is broken/RF', 'Really complicated issue', 'Follow up on another case', 'Simple Task for Care or Team outside of Care', 'Complex Process', 'Feature Request']}, {id:20,label:"Related Cases",options:['1', '2', '3', '4', '5', '6', '7', '8', '9', '10+']}, {id:21,label:"Case Owners",options:['1', '2', '3', '4', '5', '6', '7', '8', '9', '10+']}, {id:22,label:"Root Cause",options:['In Progress - Waiting on Other team', 'Improperly Escalated', 'Work Avoidance', 'Unclear Policy/Process', 'Simple Knowledge Gap', 'Complex Knowledge Gap', 'N/A']} ] }
         ];
 
-        const { createApp, ref, computed } = Vue;
+        const { createApp, ref, computed, watch, onMounted } = Vue;
         createApp({
             setup() {
                 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+                // Config State
                 const groups = ref(GROUPS);
                 const activeGroup = ref("AQM");
                 const selectedItem = ref(null);
@@ -173,7 +259,17 @@
                 const defaultsMap = ref({});
                 const itemTags = ref([]);
                 const newTag = ref({ response_value: 'no', tag_label: '', tag_feedback: '' });
+                const currentView = ref('config');
 
+                // Evaluations State
+                const evaluations = ref([]);
+                const evalFilterType = ref('daily');
+                const evalDate = ref(new Date().toISOString().split('T')[0]);
+                const evalMonth = ref(new Date().toISOString().slice(0, 7));
+                const showEditEvalModal = ref(false);
+                const editingEval = ref({});
+
+                // --- Config Logic ---
                 const activeGroupItems = computed(() => groups.value.find(g => g.name === activeGroup.value)?.items || []);
                 const filteredItems = computed(() => !searchQuery.value ? activeGroupItems.value : activeGroupItems.value.filter(i => i.label.toLowerCase().includes(searchQuery.value.toLowerCase())));
 
@@ -203,30 +299,12 @@
                     } catch(e) { alert("Error saving: " + e.message); } finally { loading.value = false; }
                 };
 
-                const openAddTagModal = () => {
-                    isEditingTag.value = false;
-                    newTag.value = { response_value: 'no', tag_label: '', tag_feedback: '' };
-                    showAddTagModal.value = true;
-                };
-
-                const openEditTagModal = (tag) => {
-                    isEditingTag.value = true;
-                    newTag.value = { ...tag }; // Clone
-                    showAddTagModal.value = true;
-                };
-
+                // Tag Logic
+                const openAddTagModal = () => { isEditingTag.value = false; newTag.value = { response_value: 'no', tag_label: '', tag_feedback: '' }; showAddTagModal.value = true; };
+                const openEditTagModal = (tag) => { isEditingTag.value = true; newTag.value = { ...tag }; showAddTagModal.value = true; };
                 const saveTag = async () => {
                     if(!newTag.value.tag_label || !newTag.value.tag_feedback) return alert("Please fill all fields");
-                    
-                    const tagPayload = { 
-                        group_name: activeGroup.value, 
-                        item_id: selectedItem.value.id, 
-                        item_name: selectedItem.value.label, 
-                        response_value: newTag.value.response_value, 
-                        tag_label: newTag.value.tag_label, 
-                        tag_feedback: newTag.value.tag_feedback 
-                    };
-
+                    const tagPayload = { group_name: activeGroup.value, item_id: selectedItem.value.id, item_name: selectedItem.value.label, response_value: newTag.value.response_value, tag_label: newTag.value.tag_label, tag_feedback: newTag.value.tag_feedback };
                     if (isEditingTag.value) {
                          const { data, error } = await supabase.from('qa_tags').update(tagPayload).eq('id', newTag.value.id).select();
                          if(error) alert("Error updating tag: " + error.message);
@@ -237,26 +315,103 @@
                          }
                     } else {
                          const { data, error } = await supabase.from('qa_tags').insert([tagPayload]).select();
-                         if(error) alert("Error adding tag: " + error.message); 
-                         else { itemTags.value.push(data[0]); showAddTagModal.value = false; }
+                         if(error) alert("Error adding tag: " + error.message); else { itemTags.value.push(data[0]); showAddTagModal.value = false; }
+                    }
+                };
+                const deleteTag = async (id) => { if(!confirm("Delete this tag?")) return; const { error } = await supabase.from('qa_tags').delete().eq('id', id); if(error) alert("Error deleting tag: " + error.message); else itemTags.value = itemTags.value.filter(t => t.id !== id); };
+                const formatTrigger = (val) => { if(selectedItem.value?.options) return selectedItem.value.options[val] || val; if (val === 'yes') return selectedItem.value.reverse ? "No (Good)" : "Yes (Good)"; if (val === 'no') return selectedItem.value.reverse ? "Yes (Bad)" : "No (Bad)"; return val; };
+
+
+                // --- Evaluation Logic ---
+                const formattedDateRange = computed(() => {
+                    if(evalFilterType.value === 'daily') return evalDate.value;
+                    if(evalFilterType.value === 'monthly') return evalMonth.value;
+                    // Weekly
+                    const d = new Date(evalDate.value);
+                    const day = d.getDay();
+                    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+                    const monday = new Date(d.setDate(diff));
+                    const sunday = new Date(d.setDate(diff + 6));
+                    return `${monday.toISOString().split('T')[0]} to ${sunday.toISOString().split('T')[0]}`;
+                });
+
+                const fetchEvaluations = async () => {
+                    loading.value = true;
+                    try {
+                        let query = supabase.from('qa_evaluations').select('*').order('date_evaluation', { ascending: false });
+                        
+                        if (evalFilterType.value === 'daily') {
+                            query = query.eq('date_evaluation', evalDate.value);
+                        } else if (evalFilterType.value === 'weekly') {
+                            const d = new Date(evalDate.value);
+                            const day = d.getDay();
+                            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                            const monday = new Date(d.setDate(diff)).toISOString().split('T')[0];
+                            const sunday = new Date(d.setDate(diff + 6)).toISOString().split('T')[0];
+                            query = query.gte('date_evaluation', monday).lte('date_evaluation', sunday);
+                        } else if (evalFilterType.value === 'monthly') {
+                            const start = `${evalMonth.value}-01`;
+                            // Quick hack to get end of month
+                            const [y, m] = evalMonth.value.split('-');
+                            const end = new Date(y, m, 0).toISOString().split('T')[0];
+                            query = query.gte('date_evaluation', start).lte('date_evaluation', end);
+                        }
+
+                        const { data, error } = await query;
+                        if(error) throw error;
+                        evaluations.value = data || [];
+                    } catch(e) {
+                        console.error(e);
+                        // alert("Error fetching evaluations");
+                    } finally {
+                        loading.value = false;
                     }
                 };
 
-                const deleteTag = async (id) => {
-                    if(!confirm("Delete this tag?")) return;
-                    const { error } = await supabase.from('qa_tags').delete().eq('id', id);
-                    if(error) alert("Error deleting tag: " + error.message); else itemTags.value = itemTags.value.filter(t => t.id !== id);
+                const deleteEval = async (id) => {
+                    if(!confirm("Permanently delete this evaluation?")) return;
+                    const { error } = await supabase.from('qa_evaluations').delete().eq('id', id);
+                    if(error) alert("Error: " + error.message);
+                    else fetchEvaluations();
                 };
 
-                const formatTrigger = (val) => {
-                   if(selectedItem.value?.options) return selectedItem.value.options[val] || val;
-                   // For Toggles
-                   if (val === 'yes') return selectedItem.value.reverse ? "No (Good)" : "Yes (Good)";
-                   if (val === 'no') return selectedItem.value.reverse ? "Yes (Bad)" : "No (Bad)";
-                   return val;
+                const editEval = (ev) => {
+                    editingEval.value = { ...ev };
+                    showEditEvalModal.value = true;
                 };
 
-                return { groups, activeGroup, selectedItem, searchQuery, filteredItems, selectItem, defaultsMap, itemTags, loading, saveAll, showAddTagModal, newTag, saveTag, deleteTag, formatTrigger, openAddTagModal, openEditTagModal, isEditingTag }
+                const updateEval = async () => {
+                    const { error } = await supabase.from('qa_evaluations').update({
+                        advocate_name: editingEval.value.advocate_name,
+                        interaction_id: editingEval.value.interaction_id,
+                        call_ani: editingEval.value.call_ani,
+                        date_interaction: editingEval.value.date_interaction,
+                        date_evaluation: editingEval.value.date_evaluation,
+                        case_category: editingEval.value.case_category,
+                        issue_concern: editingEval.value.issue_concern
+                    }).eq('id', editingEval.value.id);
+
+                    if(error) alert("Update failed: " + error.message);
+                    else {
+                        showEditEvalModal.value = false;
+                        fetchEvaluations();
+                    }
+                };
+
+                watch([currentView, evalFilterType, evalDate, evalMonth], () => {
+                    if(currentView.value === 'evaluations') fetchEvaluations();
+                });
+                
+                onMounted(() => {
+                    // Initial fetch if we start on evaluations page (not default but good practice)
+                });
+
+                return { 
+                    // Config
+                    groups, activeGroup, selectedItem, searchQuery, filteredItems, selectItem, defaultsMap, itemTags, loading, saveAll, showAddTagModal, newTag, saveTag, deleteTag, formatTrigger, openAddTagModal, openEditTagModal, isEditingTag, currentView,
+                    // Evals
+                    evaluations, evalFilterType, evalDate, evalMonth, formattedDateRange, deleteEval, editEval, showEditEvalModal, editingEval, updateEval
+                }
             }
         }).mount('#app');
     </script>
