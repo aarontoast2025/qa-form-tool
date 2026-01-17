@@ -453,6 +453,60 @@
                         `Case Category: ${ev.case_category || ''}`,
                         `Issue/Concern: ${ev.issue_concern || ''}`
                     ];
+
+                    const QUESTION_MAP = {
+                        "AQM-1": "1. Did the agent use the appropriate greeting? (branding toast, introducing self)?",
+                        "AQM-2": "2. Did the agent confirm the customer's name?",
+                        "AQM-3": "3. Did the agent confirm the business name?",
+                        "AQM-4": "4. Did the agent confirm the call back number?",
+                        "AQM-5": "5. Was an appropriate closing used?",
+                        "AQM-6": "6. Did the agent display poor listening skills?",
+                        "AQM-7": "7. Did the agent have an appropriate tone?",
+                        "AQM-8": "8. Did the agent have poor call control?",
+                        "AQM-9": "9. Did the agent express empathy?",
+                        "AQM-10": "10. Did the agent confirm solution?",
+                        "Case Management-1": "1. Did the agent offer a correct resolution and/or next steps to the cx?",
+                        "Case Management-2": "2. Did the agent follow the proper escalation path if one was needed?",
+                        "Case Management-3": "3. Did the agent fail to follow through on a promised follow up?",
+                        "Case Management-4": "4. Did the agent send an article out of context (with little explanation)?",
+                        "Case Management-5": "5. Was the agent's initial reach out to the cx within 8 hours of case assignment?",
+                        "Case Management-6": "6. Did the agent match the customers expectations / needs for their initial reach out method?",
+                        "Case Management-7": "7. Did the agent prolong resolution by using the wrong contact methods?",
+                        "Case Management-8": "8. Was the agent's written communication professional and grammatically correct?",
+                        "Case Management-9": "9. If internal communication was needed, was this clear and visible on the case?",
+                        "Case Management-10": "10. Did the agent follow 1case1issue procedures?",
+                        "Case Management-11": "11. Did the agent have clear & accurate data captured on their case notes?",
+                        "Case Management-12": "12. Did the agent leave complete & correct contact/account information, & parent / ticket / resolution categories / subject lines?",
+                        "Case Management-13": "13. Did the agent change the Subject line to include 'expert needed'?",
+                        "Case Management-14": "14. Was there incorrect case staging?",
+                        "Case Management-15": "15. Was this an intentional mistreat or work avoidance (if so, what category?)"
+                    };
+
+                    const getAnswerText = (item, sel) => {
+                        if (item.options) return item.options[sel] || '';
+                        // 'yes' corresponds to the Left button, 'no' to the Right button
+                        if (sel === 'yes') return item.reverse ? 'NO' : 'YES';
+                        if (sel === 'no') return item.reverse ? 'YES' : 'NO';
+                        return '';
+                    };
+
+                    if (ev.form_data) {
+                        GROUPS.forEach(g => {
+                            lines.push(`\n${g.name.toUpperCase()}`);
+                            g.items.forEach(item => {
+                                const key = `${g.name}-${item.id}`;
+                                const data = ev.form_data[key];
+                                if (!data) return;
+
+                                const qText = QUESTION_MAP[`${g.name}-${item.id}`] || `${item.id}. ${item.label}`;
+                                const ans = getAnswerText(item, data.sel);
+                                const fb = data.text || '';
+                                
+                                lines.push(`\n${qText}`);
+                                lines.push(`${ans} - ${fb}`);
+                            });
+                        });
+                    }
                     
                     const details = lines.join('\n');
                     
