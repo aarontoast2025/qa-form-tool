@@ -66,13 +66,31 @@
         groupName: g.name,
         itemId: item.id,
         itemType: item.options ? 'select' : 'toggle',
-        selectedTags: []
+        selectedTags: [],
+        domTextarea: null
       };
     });
   });
 
   let globalTags = [];
   let globalDefaults = {};
+
+  const updateText = (key) => {
+    const s = state[key];
+    if(!s.domTextarea) return;
+    
+    let txt = "";
+    if(s.selectedTags.length > 0) {
+        txt = s.selectedTags.map(t => t.tag_feedback).join(" ");
+    } else {
+        const lookupKey = `${s.groupName}-${s.itemId}-${s.sel}`;
+        txt = globalDefaults[lookupKey] || "";
+    }
+    
+    s.text = txt;
+    s.domTextarea.value = txt;
+    s.domTextarea.dispatchEvent(new Event('input'));
+  };
 
   const initData = async () => {
     try {
@@ -89,6 +107,10 @@
             headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
         });
         globalTags = await respTags.json();
+        
+        // Populate initial texts
+        Object.keys(state).forEach(key => updateText(key));
+
         document.dispatchEvent(new Event('qa-data-loaded'));
     } catch (e) {
         console.error("Supabase fetch failed:", e);
@@ -248,6 +270,7 @@
                 }
                 renderTags();
                 updateHeaderBg();
+                updateText(key);
             });
             tagContainer.appendChild(tagBtn);
         });
@@ -267,6 +290,7 @@
             state[key].selectedTags = []; 
             renderTags();
             updateHeaderBg();
+            updateText(key);
         });
         itemBody.appendChild(select);
       } else {
@@ -297,6 +321,7 @@
           state[key].selectedTags = []; 
           renderTags();
           updateHeaderBg();
+          updateText(key);
         };
         
         updateBtnStyle(state[key].sel);
@@ -309,8 +334,9 @@
       itemBody.appendChild(tagContainer);
 
       const textarea = createElement("textarea", sTextarea);
+      state[key].domTextarea = textarea;
       textarea.placeholder = "Comments...";
-      addListener(textarea, "input", (e) => { 
+      addListener(textarea, "input", (e) => {  
           state[key].text = e.target.value;
           updateHeaderBg();
       });
