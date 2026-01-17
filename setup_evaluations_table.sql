@@ -11,6 +11,7 @@ create table if not exists qa_evaluations (
   date_evaluation date,
   case_category text,
   issue_concern text,
+  qa_score text,
   
   -- The full state of the evaluation (selections, comments, tags)
   form_data jsonb,

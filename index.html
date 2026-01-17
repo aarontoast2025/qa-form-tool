@@ -165,6 +165,7 @@
                                          <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b">Interaction ID</th>
                                          <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b">Case #</th>
                                          <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b">Category</th>
+                                         <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b">QA Score</th>
                                          <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b text-right">Actions</th>
                                      </tr>
                                  </thead>
@@ -178,6 +179,9 @@
                                          <td class="px-4 py-3 text-sm text-gray-500 font-mono text-xs">{{ ev.interaction_id }}</td>
                                          <td class="px-4 py-3 text-sm text-gray-500 font-mono text-xs">{{ ev.case_number }}</td>
                                          <td class="px-4 py-3 text-sm text-gray-600 truncate max-w-[150px]">{{ ev.case_category }}</td>
+                                         <td class="px-4 py-3 text-sm">
+                                             <input type="text" v-model="ev.qa_score" @blur="updateScore(ev)" class="w-16 border rounded px-1 py-0.5 text-center text-xs focus:border-blue-500 outline-none" placeholder="-">
+                                         </td>
                                          <td class="px-4 py-3 text-sm text-right flex justify-end gap-2">
                                              <button @click="copyToClipboard(ev)" class="text-gray-400 hover:text-blue-500" title="Copy to Clipboard"><i class="fa-solid fa-clipboard"></i></button>
                                              <button @click="copyForWorksheet(ev)" class="text-gray-400 hover:text-green-600" title="Copy for Worksheet"><i class="fa-solid fa-table"></i></button>
@@ -204,6 +208,7 @@
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">Call Duration</label><input v-model="editingEval.call_duration" type="text" class="w-full border rounded p-2 text-sm"></div>
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">Date Interaction</label><input v-model="editingEval.date_interaction" type="date" class="w-full border rounded p-2 text-sm"></div>
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">Date Evaluation</label><input v-model="editingEval.date_evaluation" type="date" class="w-full border rounded p-2 text-sm"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">QA Score</label><input v-model="editingEval.qa_score" type="text" class="w-full border rounded p-2 text-sm" placeholder="e.g. 100%"></div>
                         <div class="col-span-2"><label class="block text-xs font-bold text-gray-500 mb-1">Case Category</label><input v-model="editingEval.case_category" type="text" class="w-full border rounded p-2 text-sm"></div>
                         <div class="col-span-2"><label class="block text-xs font-bold text-gray-500 mb-1">Issue/Concern</label><textarea v-model="editingEval.issue_concern" class="w-full border rounded p-2 text-sm h-20"></textarea></div>
                     </div>
@@ -394,7 +399,8 @@
                         date_interaction: editingEval.value.date_interaction,
                         date_evaluation: editingEval.value.date_evaluation,
                         case_category: editingEval.value.case_category,
-                        issue_concern: editingEval.value.issue_concern
+                        issue_concern: editingEval.value.issue_concern,
+                        qa_score: editingEval.value.qa_score
                     }).eq('id', editingEval.value.id);
 
                     if(error) alert("Update failed: " + error.message);
@@ -402,6 +408,13 @@
                         showEditEvalModal.value = false;
                         fetchEvaluations();
                     }
+                };
+
+                const updateScore = async (ev) => {
+                    const { error } = await supabase.from('qa_evaluations').update({
+                        qa_score: ev.qa_score
+                    }).eq('id', ev.id);
+                    if(error) console.error("Error updating score:", error);
                 };
 
                 const formatDateMMDDYY = (dateStr) => {
@@ -544,7 +557,7 @@
                     // Config
                     groups, activeGroup, selectedItem, searchQuery, filteredItems, selectItem, defaultsMap, itemTags, loading, saveAll, showAddTagModal, newTag, saveTag, deleteTag, formatTrigger, openAddTagModal, openEditTagModal, isEditingTag, currentView,
                     // Evals
-                    evaluations, evalFilterType, evalDate, evalMonth, formattedDateRange, deleteEval, editEval, showEditEvalModal, editingEval, updateEval, copyToClipboard, copyForWorksheet
+                    evaluations, evalFilterType, evalDate, evalMonth, formattedDateRange, deleteEval, editEval, showEditEvalModal, editingEval, updateEval, copyToClipboard, copyForWorksheet, updateScore
                 }
             }
         }).mount('#app');
