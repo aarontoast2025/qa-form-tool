@@ -484,7 +484,6 @@
 
                     const getAnswerText = (item, sel) => {
                         if (item.options) return item.options[sel] || '';
-                        // 'yes' corresponds to the Left button, 'no' to the Right button
                         if (sel === 'yes') return item.reverse ? 'NO' : 'YES';
                         if (sel === 'no') return item.reverse ? 'YES' : 'NO';
                         return '';
@@ -509,9 +508,22 @@
                     }
                     
                     const details = lines.join('\n');
+
+                    // Extract Complexity
+                    let complexityVal = '';
+                    if (ev.form_data && ev.form_data['Case Management-19']) {
+                        const sel = ev.form_data['Case Management-19'].sel;
+                        const cmGroup = GROUPS.find(g => g.name === 'Case Management');
+                        if (cmGroup) {
+                            const compItem = cmGroup.items.find(i => i.id === 19);
+                            if (compItem && compItem.options) {
+                                complexityVal = compItem.options[sel] || '';
+                            }
+                        }
+                    }
                     
-                    // Wrap details in quotes to keep it in one cell for Excel/Sheets
-                    const text = `Active\t${mainCat}\t${subCat}\t"${details.replace(/"/g, '""')}"`;
+                    // Columns: Active | Main Cat | Sub Cat | Details | Date Int | Date Eval | Case # | Int ID | Duration | Complexity
+                    const text = `Active\t${mainCat}\t${subCat}\t"${details.replace(/"/g, '""')}"\t${formatDateMMDDYY(ev.date_interaction)}\t${formatDateMMDDYY(ev.date_evaluation)}\t${ev.case_number || ''}\t${ev.interaction_id || ''}\t${ev.call_duration || ''}\t${complexityVal}`;
                     
                     navigator.clipboard.writeText(text).then(() => {
                         alert("Copied for worksheet!");
