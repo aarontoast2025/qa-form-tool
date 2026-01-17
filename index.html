@@ -432,7 +432,33 @@
                 };
 
                 const copyForWorksheet = (ev) => {
-                    const text = `Active\t${ev.case_category || ''}`;
+                    const category = ev.case_category || '';
+                    let mainCat = category;
+                    let subCat = '';
+                    
+                    if (category.includes(' > ')) {
+                        const parts = category.split(' > ');
+                        mainCat = parts[0];
+                        subCat = parts.slice(1).join(' > ');
+                    }
+
+                    const lines = [
+                        `Interaction ID: ${ev.interaction_id || ''}`,
+                        `Advocate Name: ${ev.advocate_name || ''}`,
+                        `Date of Interaction: ${formatDateMMDDYY(ev.date_interaction)}`,
+                        `Date of Evaluation: ${formatDateMMDDYY(ev.date_evaluation)}`,
+                        `Call ANI/DNIS: ${ev.call_ani || ''}`,
+                        `Case #: ${ev.case_number || ''}`,
+                        `Call Duration: ${ev.call_duration || ''}`,
+                        `Case Category: ${ev.case_category || ''}`,
+                        `Issue/Concern: ${ev.issue_concern || ''}`
+                    ];
+                    
+                    const details = lines.join('\n');
+                    
+                    // Wrap details in quotes to keep it in one cell for Excel/Sheets
+                    const text = `Active\t${mainCat}\t${subCat}\t"${details.replace(/"/g, '""')}"`;
+                    
                     navigator.clipboard.writeText(text).then(() => {
                         alert("Copied for worksheet!");
                     }).catch(err => {
