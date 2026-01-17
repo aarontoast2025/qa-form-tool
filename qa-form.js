@@ -251,28 +251,33 @@
       }
   };
 
-  // Row 1
+  // Row 1 (3 columns)
   const fInteractionId = createCompactField("Interaction ID", "🆔");
   const fAdvocateName = createCompactField("Advocate Name", "👤");
   const fCallAni = createCompactField("Call ANI/DNIS", "📞");
   
-  // Row 2
+  headerFieldsContainer.appendChild(fInteractionId.div);
+  headerFieldsContainer.appendChild(fAdvocateName.div);
+  headerFieldsContainer.appendChild(fCallAni.div);
+
+  // Row 2 (Dates - 2 columns dedicated)
+  const dateRow = createElement("div");
+  dateRow.style.cssText = "grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;";
+  
   const fDateInteraction = createCompactField("Date of Interaction", "", "date", false, true); 
   const fDateEvaluation = createCompactField("Date of Evaluation", "", "date", false, true);
   fDateEvaluation.input.valueAsDate = new Date();
   
-  // Row 3
+  dateRow.appendChild(fDateInteraction.div);
+  dateRow.appendChild(fDateEvaluation.div);
+  headerFieldsContainer.appendChild(dateRow);
+
+  // Row 3 (Case Category - Full Width)
   const fCaseCategory = createCompactField("Case Category", "🗂️", "text", true);
-
-  // Row 4
-  const fIssueConcern = createCompactField("Issue/Concern", "✍️", "textarea", true);
-
-  headerFieldsContainer.appendChild(fInteractionId.div);
-  headerFieldsContainer.appendChild(fAdvocateName.div);
-  headerFieldsContainer.appendChild(fCallAni.div);
-  headerFieldsContainer.appendChild(fDateInteraction.div);
-  headerFieldsContainer.appendChild(fDateEvaluation.div);
   headerFieldsContainer.appendChild(fCaseCategory.div);
+
+  // Row 4 (Issue/Concern - Full Width)
+  const fIssueConcern = createCompactField("Issue/Concern", "✍️", "textarea", true);
   headerFieldsContainer.appendChild(fIssueConcern.div);
 
   contentContainer.appendChild(headerFieldsContainer);
@@ -500,8 +505,11 @@
   };
   
   addListener(btnSave, "click", saveToSupabase);
+  
+  footer.appendChild(btnCancel);
+  footer.appendChild(btnGenerate);
+  footer.appendChild(btnSave); // Ensure button is appended
 
-  const findGroupContainer = (name) => {
     const h2s = Array.from(document.querySelectorAll('h2'));
     const h2 = h2s.find(el => el.textContent.trim().includes(name));
     return h2 ? h2.closest('.padding-xlarge') : null;
