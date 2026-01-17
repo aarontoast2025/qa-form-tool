@@ -535,8 +535,8 @@
                         }
                     }
                     
-                    // Columns: Active | Main Cat | Sub Cat | Details | Date Int | Date Eval | Case # | Int ID | Duration | Complexity
-                    const text = `Active\t${mainCat}\t${subCat}\t"${details.replace(/"/g, '""')}"\t${formatDateMMDDYY(ev.date_interaction)}\t${formatDateMMDDYY(ev.date_evaluation)}\t${ev.case_number || ''}\t${ev.interaction_id || ''}\t${ev.call_duration || ''}\t${complexityVal}`;
+                    // Columns: Active | Main Cat | Sub Cat | Details | Date Int | Date Eval | Case # | Int ID | QA Score | Duration | Complexity
+                    const text = `Active\t${mainCat}\t${subCat}\t"${details.replace(/"/g, '""')}"\t${formatDateMMDDYY(ev.date_interaction)}\t${formatDateMMDDYY(ev.date_evaluation)}\t${ev.case_number || ''}\t${ev.interaction_id || ''}\t${ev.qa_score || ''}\t${ev.call_duration || ''}\t${complexityVal}`;
                     
                     navigator.clipboard.writeText(text).then(() => {
                         alert("Copied for worksheet!");
