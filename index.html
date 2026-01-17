@@ -180,6 +180,7 @@
                                          <td class="px-4 py-3 text-sm text-gray-600 truncate max-w-[150px]">{{ ev.case_category }}</td>
                                          <td class="px-4 py-3 text-sm text-right flex justify-end gap-2">
                                              <button @click="copyToClipboard(ev)" class="text-gray-400 hover:text-blue-500" title="Copy to Clipboard"><i class="fa-solid fa-clipboard"></i></button>
+                                             <button @click="copyForWorksheet(ev)" class="text-gray-400 hover:text-green-600" title="Copy for Worksheet"><i class="fa-solid fa-table"></i></button>
                                              <button @click="editEval(ev)" class="text-blue-500 hover:text-blue-700" title="Edit Details"><i class="fa-solid fa-pencil"></i></button>
                                              <button @click="deleteEval(ev.id)" class="text-red-400 hover:text-red-600" title="Delete"><i class="fa-solid fa-trash"></i></button>
                                          </td>
@@ -430,6 +431,15 @@
                     });
                 };
 
+                const copyForWorksheet = (ev) => {
+                    const text = `Active\t${ev.case_category || ''}`;
+                    navigator.clipboard.writeText(text).then(() => {
+                        alert("Copied for worksheet!");
+                    }).catch(err => {
+                        console.error('Could not copy text: ', err);
+                    });
+                };
+
                 watch([currentView, evalFilterType, evalDate, evalMonth], () => {
                     if(currentView.value === 'evaluations') fetchEvaluations();
                 });
@@ -442,7 +452,7 @@
                     // Config
                     groups, activeGroup, selectedItem, searchQuery, filteredItems, selectItem, defaultsMap, itemTags, loading, saveAll, showAddTagModal, newTag, saveTag, deleteTag, formatTrigger, openAddTagModal, openEditTagModal, isEditingTag, currentView,
                     // Evals
-                    evaluations, evalFilterType, evalDate, evalMonth, formattedDateRange, deleteEval, editEval, showEditEvalModal, editingEval, updateEval, copyToClipboard
+                    evaluations, evalFilterType, evalDate, evalMonth, formattedDateRange, deleteEval, editEval, showEditEvalModal, editingEval, updateEval, copyToClipboard, copyForWorksheet
                 }
             }
         }).mount('#app');
