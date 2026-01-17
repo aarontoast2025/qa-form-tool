@@ -260,9 +260,11 @@
   const fDateInteraction = createCompactField("Date of Interaction", "", "date", false, true); 
   const fDateEvaluation = createCompactField("Date of Evaluation", "", "date", false, true);
   fDateEvaluation.input.valueAsDate = new Date();
-  const fCaseCategory = createCompactField("Case Category", "🗂️");
-
+  
   // Row 3
+  const fCaseCategory = createCompactField("Case Category", "🗂️", "text", true);
+
+  // Row 4
   const fIssueConcern = createCompactField("Issue/Concern", "✍️", "textarea", true);
 
   headerFieldsContainer.appendChild(fInteractionId.div);
@@ -447,6 +449,58 @@
   const btnGenerate = createElement("button", sBtnGenerate);
   btnGenerate.textContent = "Generate";
   
+  const btnSave = createElement("button");
+  btnSave.textContent = "Save";
+  btnSave.style.cssText = sBtnGenerate.replace("#2563eb", "#059669"); // Green color for Save
+  
+  const saveToSupabase = async () => {
+      btnSave.textContent = "Saving... ⏳";
+      btnSave.disabled = true;
+      btnSave.style.opacity = "0.7";
+      
+      const payload = {
+          interaction_id: fInteractionId.input.value,
+          advocate_name: fAdvocateName.input.value,
+          call_ani: fCallAni.input.value,
+          date_interaction: fDateInteraction.input.value,
+          date_evaluation: fDateEvaluation.input.value,
+          case_category: fCaseCategory.input.value,
+          issue_concern: fIssueConcern.input.value,
+          // Simplify state for storage (remove DOM refs)
+          form_data: Object.fromEntries(Object.entries(state).map(([k, v]) => [k, { 
+              sel: v.sel, 
+              text: v.text, 
+              checked: v.checked,
+              tags: v.selectedTags.map(t => t.tag_label) 
+          }]))
+      };
+      
+      try {
+          const { error } = await fetch(`${SUPABASE_URL}/rest/v1/qa_evaluations`, {
+             method: 'POST',
+             headers: { 
+                 "apikey": SUPABASE_KEY, 
+                 "Authorization": `Bearer ${SUPABASE_KEY}`,
+                 "Content-Type": "application/json",
+                 "Prefer": "return=minimal"
+             },
+             body: JSON.stringify(payload)
+          }).then(r => r.json().then(data => ({ data, error: !r.ok ? data : null }))); // Fetch wrapper for simple error handling
+          
+          if(error) throw error;
+          alert("Evaluation saved to database! 💾");
+      } catch(e) {
+          console.error(e);
+          alert("Error saving: " + (e.message || "Unknown error"));
+      } finally {
+          btnSave.textContent = "Save";
+          btnSave.disabled = false;
+          btnSave.style.opacity = "1";
+      }
+  };
+  
+  addListener(btnSave, "click", saveToSupabase);
+
   const findGroupContainer = (name) => {
     const h2s = Array.from(document.querySelectorAll('h2'));
     const h2 = h2s.find(el => el.textContent.trim().includes(name));
