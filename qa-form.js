@@ -203,49 +203,73 @@
 
   // --- New Header Fields ---
   const headerFieldsContainer = createElement("div");
-  headerFieldsContainer.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #eee";
+  headerFieldsContainer.style.cssText = "display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #eee";
 
-  const createField = (labelText, type = "text", placeholder = "", fullWidth = false) => {
-      const div = createElement("div");
-      if(fullWidth) div.style.gridColumn = "span 2";
-      const lbl = createElement("label");
-      lbl.textContent = labelText;
-      lbl.style.cssText = sLabel;
-      
-      let input;
-      if(type === "textarea") {
-          input = createElement("textarea");
-          input.style.cssText = sTextarea;
-          input.style.height = "80px";
-      } else {
-          input = createElement("input");
+  const createCompactField = (placeholder, icon, type = "text", fullWidth = false, useLabel = false) => {
+      const wrapper = createElement("div");
+      if(fullWidth) wrapper.style.gridColumn = "1 / -1"; 
+
+      if (useLabel) {
+          const lbl = createElement("label");
+          lbl.textContent = placeholder;
+          lbl.style.cssText = sLabel; 
+          const input = createElement("input");
           input.type = type;
-          input.style.cssText = sInput;
+          input.style.cssText = sInput; 
+          wrapper.appendChild(lbl);
+          wrapper.appendChild(input);
+          return { div: wrapper, input };
+      } else {
+          const container = createElement("div");
+          container.style.cssText = "display:flex;align-items:center;border:1px solid #ccc;border-radius:4px;padding:6px 10px;background:white;transition:border-color 0.2s";
+          
+          const ico = createElement("span");
+          ico.textContent = icon;
+          ico.style.cssText = "margin-right:8px;font-size:14px;opacity:0.7;user-select:none;min-width:18px;text-align:center";
+          
+          let input;
+          if(type === "textarea") {
+              input = createElement("textarea");
+              input.style.cssText = "width:100%;border:none;outline:none;font-family:inherit;font-size:13px;resize:vertical;height:60px;padding:0";
+              input.placeholder = placeholder;
+              container.style.alignItems = "flex-start";
+              ico.style.marginTop = "3px";
+          } else {
+              input = createElement("input");
+              input.type = type;
+              input.style.cssText = "width:100%;border:none;outline:none;font-family:inherit;font-size:13px;background:transparent";
+              input.placeholder = placeholder;
+          }
+
+          addListener(input, "focus", () => container.style.borderColor = "#2563eb");
+          addListener(input, "blur", () => container.style.borderColor = "#ccc");
+
+          container.appendChild(ico);
+          container.appendChild(input);
+          wrapper.appendChild(container);
+          return { div: wrapper, input };
       }
-      if(placeholder) input.placeholder = placeholder;
-      
-      div.appendChild(lbl);
-      div.appendChild(input);
-      return { div, input };
   };
 
-  const fInteractionId = createField("Interaction ID");
-  const fAdvocateName = createField("Advocate Name");
-  const fDateInteraction = createField("Date of Interaction", "date"); // Using date input for easier picking, can be text if strictly mm/dd/yy format needed manually
-  const fDateEvaluation = createField("Date of Evaluation", "date");
+  // Row 1
+  const fInteractionId = createCompactField("Interaction ID", "🆔");
+  const fAdvocateName = createCompactField("Advocate Name", "👤");
+  const fCallAni = createCompactField("Call ANI/DNIS", "📞");
   
-  // Set default Date of Evaluation to today
+  // Row 2
+  const fDateInteraction = createCompactField("Date of Interaction", "", "date", false, true); 
+  const fDateEvaluation = createCompactField("Date of Evaluation", "", "date", false, true);
   fDateEvaluation.input.valueAsDate = new Date();
+  const fCaseCategory = createCompactField("Case Category", "🗂️");
 
-  const fCallAni = createField("Call ANI/DNIS");
-  const fCaseCategory = createField("Case Category");
-  const fIssueConcern = createField("Issue/Concern", "textarea", "", true);
+  // Row 3
+  const fIssueConcern = createCompactField("Issue/Concern", "✍️", "textarea", true);
 
   headerFieldsContainer.appendChild(fInteractionId.div);
   headerFieldsContainer.appendChild(fAdvocateName.div);
+  headerFieldsContainer.appendChild(fCallAni.div);
   headerFieldsContainer.appendChild(fDateInteraction.div);
   headerFieldsContainer.appendChild(fDateEvaluation.div);
-  headerFieldsContainer.appendChild(fCallAni.div);
   headerFieldsContainer.appendChild(fCaseCategory.div);
   headerFieldsContainer.appendChild(fIssueConcern.div);
 
