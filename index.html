@@ -163,7 +163,7 @@
                                          <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b">Date (Eval)</th>
                                          <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b">Advocate</th>
                                          <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b">Interaction ID</th>
-                                         <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b">ANI/DNIS</th>
+                                         <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b">Case #</th>
                                          <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b">Category</th>
                                          <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase border-b text-right">Actions</th>
                                      </tr>
@@ -176,9 +176,10 @@
                                          <td class="px-4 py-3 text-sm text-gray-700">{{ ev.date_evaluation }}</td>
                                          <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ ev.advocate_name }}</td>
                                          <td class="px-4 py-3 text-sm text-gray-500 font-mono text-xs">{{ ev.interaction_id }}</td>
-                                         <td class="px-4 py-3 text-sm text-gray-500">{{ ev.call_ani }}</td>
-                                         <td class="px-4 py-3 text-sm text-gray-600">{{ ev.case_category }}</td>
+                                         <td class="px-4 py-3 text-sm text-gray-500 font-mono text-xs">{{ ev.case_number }}</td>
+                                         <td class="px-4 py-3 text-sm text-gray-600 truncate max-w-[150px]">{{ ev.case_category }}</td>
                                          <td class="px-4 py-3 text-sm text-right flex justify-end gap-2">
+                                             <button @click="copyToClipboard(ev)" class="text-gray-400 hover:text-blue-500" title="Copy to Clipboard"><i class="fa-solid fa-clipboard"></i></button>
                                              <button @click="editEval(ev)" class="text-blue-500 hover:text-blue-700" title="Edit Details"><i class="fa-solid fa-pencil"></i></button>
                                              <button @click="deleteEval(ev.id)" class="text-red-400 hover:text-red-600" title="Delete"><i class="fa-solid fa-trash"></i></button>
                                          </td>
@@ -198,6 +199,8 @@
                         <div class="col-span-2"><label class="block text-xs font-bold text-gray-500 mb-1">Advocate Name</label><input v-model="editingEval.advocate_name" type="text" class="w-full border rounded p-2 text-sm"></div>
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">Interaction ID</label><input v-model="editingEval.interaction_id" type="text" class="w-full border rounded p-2 text-sm"></div>
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">Call ANI</label><input v-model="editingEval.call_ani" type="text" class="w-full border rounded p-2 text-sm"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Case #</label><input v-model="editingEval.case_number" type="text" class="w-full border rounded p-2 text-sm"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 mb-1">Call Duration</label><input v-model="editingEval.call_duration" type="text" class="w-full border rounded p-2 text-sm"></div>
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">Date Interaction</label><input v-model="editingEval.date_interaction" type="date" class="w-full border rounded p-2 text-sm"></div>
                         <div><label class="block text-xs font-bold text-gray-500 mb-1">Date Evaluation</label><input v-model="editingEval.date_evaluation" type="date" class="w-full border rounded p-2 text-sm"></div>
                         <div class="col-span-2"><label class="block text-xs font-bold text-gray-500 mb-1">Case Category</label><input v-model="editingEval.case_category" type="text" class="w-full border rounded p-2 text-sm"></div>
@@ -385,6 +388,8 @@
                         advocate_name: editingEval.value.advocate_name,
                         interaction_id: editingEval.value.interaction_id,
                         call_ani: editingEval.value.call_ani,
+                        case_number: editingEval.value.case_number,
+                        call_duration: editingEval.value.call_duration,
                         date_interaction: editingEval.value.date_interaction,
                         date_evaluation: editingEval.value.date_evaluation,
                         case_category: editingEval.value.case_category,
@@ -396,6 +401,33 @@
                         showEditEvalModal.value = false;
                         fetchEvaluations();
                     }
+                };
+
+                const formatDateMMDDYY = (dateStr) => {
+                    if(!dateStr) return "";
+                    const [y, m, d] = dateStr.split('-');
+                    return `${m}/${d}/${y.slice(-2)}`;
+                };
+
+                const copyToClipboard = (ev) => {
+                    const lines = [
+                        `Interaction ID: ${ev.interaction_id || ''}`,
+                        `Advocate Name: ${ev.advocate_name || ''}`,
+                        `Date of Interaction: ${formatDateMMDDYY(ev.date_interaction)}`,
+                        `Date of Evaluation: ${formatDateMMDDYY(ev.date_evaluation)}`,
+                        `Call ANI/DNIS: ${ev.call_ani || ''}`,
+                        `Case #: ${ev.case_number || ''}`,
+                        `Call Duration: ${ev.call_duration || ''}`,
+                        `Case Category: ${ev.case_category || ''}`,
+                        `Issue/Concern: ${ev.issue_concern || ''}`
+                    ];
+                    
+                    const text = lines.join('\n');
+                    navigator.clipboard.writeText(text).then(() => {
+                        alert("Details copied to clipboard!");
+                    }).catch(err => {
+                        console.error('Could not copy text: ', err);
+                    });
                 };
 
                 watch([currentView, evalFilterType, evalDate, evalMonth], () => {
@@ -410,7 +442,7 @@
                     // Config
                     groups, activeGroup, selectedItem, searchQuery, filteredItems, selectItem, defaultsMap, itemTags, loading, saveAll, showAddTagModal, newTag, saveTag, deleteTag, formatTrigger, openAddTagModal, openEditTagModal, isEditingTag, currentView,
                     // Evals
-                    evaluations, evalFilterType, evalDate, evalMonth, formattedDateRange, deleteEval, editEval, showEditEvalModal, editingEval, updateEval
+                    evaluations, evalFilterType, evalDate, evalMonth, formattedDateRange, deleteEval, editEval, showEditEvalModal, editingEval, updateEval, copyToClipboard
                 }
             }
         }).mount('#app');

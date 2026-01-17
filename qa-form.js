@@ -260,6 +260,15 @@
   headerFieldsContainer.appendChild(fAdvocateName.div);
   headerFieldsContainer.appendChild(fCallAni.div);
 
+  // Row 1.5 (2 columns for Case # and Duration)
+  const caseDurationRow = createElement("div");
+  caseDurationRow.style.cssText = "grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;";
+  const fCaseNumber = createCompactField("Case #", "🔢");
+  const fCallDuration = createCompactField("Call Duration", "⏱️");
+  caseDurationRow.appendChild(fCaseNumber.div);
+  caseDurationRow.appendChild(fCallDuration.div);
+  headerFieldsContainer.appendChild(caseDurationRow);
+
   // Row 2 (Dates - 2 columns dedicated)
   const dateRow = createElement("div");
   dateRow.style.cssText = "grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;";
@@ -482,6 +491,8 @@
             interaction_id: fInteractionId.input.value,
             advocate_name: fAdvocateName.input.value,
             call_ani: fCallAni.input.value,
+            case_number: fCaseNumber.input.value,
+            call_duration: fCallDuration.input.value,
             date_interaction: fDateInteraction.input.value,
             date_evaluation: fDateEvaluation.input.value,
             case_category: fCaseCategory.input.value,
