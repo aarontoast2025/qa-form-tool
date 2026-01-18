@@ -462,20 +462,27 @@
 
   const btnGenerate = createElement("button", sBtnGenerate);
   btnGenerate.textContent = "Generate & Save";
-  
+
+  const btnGenerateOnly = createElement("button", sBtnGenerate);
+  btnGenerateOnly.textContent = "Generate";
+  btnGenerateOnly.style.backgroundColor = "#4f46e5";
+
   const findGroupContainer = (name) => {
     const h2s = Array.from(document.querySelectorAll('h2'));
     const h2 = h2s.find(el => el.textContent.trim().includes(name));
     return h2 ? h2.closest('.padding-xlarge') : null;
   };
 
-  addListener(btnGenerate, "click", async () => {
-    // Loading State
-    const originalText = btnGenerate.textContent;
-    btnGenerate.textContent = "Generating... ⏳";
-    btnGenerate.disabled = true;
-    btnGenerate.style.opacity = "0.7";
-    btnGenerate.style.cursor = "not-allowed";
+  const handleGeneration = async (saveToDb) => {
+    const activeBtn = saveToDb ? btnGenerate : btnGenerateOnly;
+    const originalText = activeBtn.textContent;
+    activeBtn.textContent = "Generating... ⏳";
+    
+    [btnGenerate, btnGenerateOnly, btnCancel].forEach(b => {
+        b.disabled = true;
+        b.style.opacity = "0.7";
+        b.style.cursor = "not-allowed";
+    });
 
     const allKeys = Object.keys(state);
     const checkedKeys = allKeys.filter(k => state[k].checked);
@@ -484,54 +491,60 @@
     let index = 0;
     const processNext = async () => {
       if(index >= targetKeys.length) {
-        // --- Generation Complete, Now Save ---
-        btnGenerate.textContent = "Saving... ⏳";
-        
-        const payload = {
-            interaction_id: fInteractionId.input.value,
-            advocate_name: fAdvocateName.input.value,
-            call_ani: fCallAni.input.value,
-            case_number: fCaseNumber.input.value,
-            call_duration: fCallDuration.input.value,
-            date_interaction: fDateInteraction.input.value,
-            date_evaluation: fDateEvaluation.input.value,
-            case_category: fCaseCategory.input.value,
-            issue_concern: fIssueConcern.input.value,
-            form_data: Object.fromEntries(Object.entries(state).map(([k, v]) => [k, { 
-                sel: v.sel, 
-                text: v.text, 
-                checked: v.checked,
-                tags: v.selectedTags.map(t => t.tag_label) 
-            }]))
-        };
-
-        try {
-            const resp = await fetch(`${SUPABASE_URL}/rest/v1/qa_evaluations`, {
-               method: 'POST',
-               headers: { 
-                   "apikey": SUPABASE_KEY, 
-                   "Authorization": `Bearer ${SUPABASE_KEY}`,
-                   "Content-Type": "application/json",
-                   "Prefer": "return=minimal"
-               },
-               body: JSON.stringify(payload)
-            });
+        // --- Generation Complete ---
+        if(saveToDb) {
+            activeBtn.textContent = "Saving... ⏳";
             
-            if(!resp.ok) {
-                const err = await resp.json();
-                throw err;
+            const payload = {
+                interaction_id: fInteractionId.input.value,
+                advocate_name: fAdvocateName.input.value,
+                call_ani: fCallAni.input.value,
+                case_number: fCaseNumber.input.value,
+                call_duration: fCallDuration.input.value,
+                date_interaction: fDateInteraction.input.value,
+                date_evaluation: fDateEvaluation.input.value,
+                case_category: fCaseCategory.input.value,
+                issue_concern: fIssueConcern.input.value,
+                form_data: Object.fromEntries(Object.entries(state).map(([k, v]) => [k, { 
+                    sel: v.sel, 
+                    text: v.text, 
+                    checked: v.checked,
+                    tags: v.selectedTags.map(t => t.tag_label) 
+                }]))
+            };
+
+            try {
+                const resp = await fetch(`${SUPABASE_URL}/rest/v1/qa_evaluations`, {
+                   method: 'POST',
+                   headers: { 
+                       "apikey": SUPABASE_KEY, 
+                       "Authorization": `Bearer ${SUPABASE_KEY}`,
+                       "Content-Type": "application/json",
+                       "Prefer": "return=minimal"
+                   },
+                   body: JSON.stringify(payload)
+                });
+                
+                if(!resp.ok) {
+                    const err = await resp.json();
+                    throw err;
+                }
+                alert("✓ Generated and Saved to Database! 💾");
+            } catch(e) {
+                console.error(e);
+                alert("Generated, but error saving: " + (e.message || "Unknown error"));
             }
-            alert("✓ Generated and Saved to Database! 💾");
-        } catch(e) {
-            console.error(e);
-            alert("Generated, but error saving: " + (e.message || "Unknown error"));
+        } else {
+             alert("✓ Generated! (Not saved)");
         }
         
         // Restore State
-        btnGenerate.textContent = originalText;
-        btnGenerate.disabled = false;
-        btnGenerate.style.opacity = "1";
-        btnGenerate.style.cursor = "pointer";
+        activeBtn.textContent = originalText;
+        [btnGenerate, btnGenerateOnly, btnCancel].forEach(b => {
+            b.disabled = false;
+            b.style.opacity = "1";
+            b.style.cursor = "pointer";
+        });
         
         overlay.remove();
         return;
@@ -591,9 +604,13 @@
       processNext();
     };
     processNext();
-  });
+  };
+
+  addListener(btnGenerate, "click", () => handleGeneration(true));
+  addListener(btnGenerateOnly, "click", () => handleGeneration(false));
 
   footer.appendChild(btnCancel);
+  footer.appendChild(btnGenerateOnly);
   footer.appendChild(btnGenerate);
   modal.appendChild(header);
   modal.appendChild(contentContainer);
