@@ -40,7 +40,7 @@
         {id:15,label:"Mistreat/Avoid",options:['No', 'Yes - Rude to Cx', 'Yes - False phone interactions', 'Yes - hung up on cx', 'Yes - excessive holds (caused cx to hang up)', 'Yes - Denied Transfer', 'Yes - Survey Avoidance', 'Yes - Case Avoidance (assigned case, then sent back to same queue with no notes or adjustment to subject line)', 'Yes - Case Avoidance (Case set to Resolution Proposed, without solving the issue)', 'Yes-Changes made without asking for POS code', 'Yes -Changes made without asking for SSN (payroll only)', 'Yes - Verification Process not followed (fraud) ']},
         {id:16,label:"Temp Start",options:['Churn', 'Upset', 'Neutral', 'Happy']},
         {id:17,label:"Temp End",options:['Churn', 'Upset', 'Neutral', 'Happy']},
-        {id:18,label:"Temp Worsen",reverse:!0},
+        {id:18,label:"Temp Worsen",reverse:!1},
         {id:19,label:"Complexity",options:['Training Opportunities (basic)', 'HW/SW troubleshooting (basic)', 'Non-intuitive/not understanding how something works', 'Something is broken/RF', 'Really complicated issue', 'Follow up on another case', 'Simple Task for Care or Team outside of Care', 'Complex Process', 'Feature Request']},
         {id:20,label:"Related Cases",options:['1', '2', '3', '4', '5', '6', '7', '8', '9', '10+']},
         {id:21,label:"Case Owners",options:['1', '2', '3', '4', '5', '6', '7', '8', '9', '10+']},
@@ -56,6 +56,7 @@
       let defaultSel = item.options ? 0 : "yes"; // Left button default
       if (item.label === "Expert Needed") defaultSel = 2;
       if (item.label === "Temp Start" || item.label === "Temp End") defaultSel = 2;
+      if (item.label === "Temp Worsen") defaultSel = "no";
       if (item.label === "Complexity") defaultSel = 6;
       if (item.label === "Root Cause") defaultSel = 6;
 
@@ -159,6 +160,12 @@
   
   const getTheme = (item, sel) => {
      if(item.options) return 'gray';
+     
+     if (item.label === "Temp Worsen") {
+         if(sel === 'no') return 'green';
+         if(sel === 'yes') return 'red';
+     }
+
      // Simplified Logic: 'yes' (Left) is always Green (Good), 'no' (Right) is always Red (Bad)
      if(sel === 'yes') return 'green';
      if(sel === 'no') return 'red';
