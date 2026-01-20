@@ -151,9 +151,14 @@
                             </div>
                         </div>
 
-                        <div class="text-right">
-                             <div class="text-sm font-semibold text-gray-700">Range: <span class="text-blue-600">{{ formattedDateRange }}</span></div>
-                             <div class="text-xs text-gray-400">{{ evaluations.length }} records found</div>
+                        <div class="flex items-center gap-3">
+                            <button @click="fetchEvaluations" :disabled="loading" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-blue-100 text-gray-500 hover:text-blue-600 flex items-center justify-center transition-all" title="Refresh Data">
+                                <i :class="['fa-solid fa-sync', loading ? 'fa-spin' : '']"></i>
+                            </button>
+                            <div class="text-right">
+                                 <div class="text-sm font-semibold text-gray-700">Range: <span class="text-blue-600">{{ formattedDateRange }}</span></div>
+                                 <div class="text-xs text-gray-400">{{ evaluations.length }} records found</div>
+                            </div>
                         </div>
                     </div>
 
@@ -566,7 +571,7 @@
                     // Config
                     groups, activeGroup, selectedItem, searchQuery, filteredItems, selectItem, defaultsMap, itemTags, loading, saveAll, showAddTagModal, newTag, saveTag, deleteTag, formatTrigger, openAddTagModal, openEditTagModal, isEditingTag, currentView,
                     // Evals
-                    evaluations, evalFilterType, evalDate, evalMonth, formattedDateRange, deleteEval, editEval, showEditEvalModal, editingEval, updateEval, copyToClipboard, copyForWorksheet, updateScore
+                    evaluations, evalFilterType, evalDate, evalMonth, formattedDateRange, fetchEvaluations, deleteEval, editEval, showEditEvalModal, editingEval, updateEval, copyToClipboard, copyForWorksheet, updateScore
                 }
             }
         }).mount('#app');
