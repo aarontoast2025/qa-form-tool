@@ -208,7 +208,39 @@
 
   const contentContainer = createElement("div", sContent);
 
-  const createCompactField = (placeholder, icon, type = "text", fullWidth = false, useLabel = false) => {
+  // --- Extraction Helpers ---
+  const extractText = (selector) => { const el = document.querySelector(selector); return el ? el.textContent.trim() : ""; };
+  
+  const getInteractionId = () => {
+      const h4s = Array.from(document.querySelectorAll('h4'));
+      const h4 = h4s.find(el => el.textContent.trim() === 'Interaction ID');
+      return h4 && h4.nextElementSibling ? h4.nextElementSibling.textContent.trim() : "";
+  };
+  
+  const getAdvocateName = () => extractText('.review-info h2');
+  
+  const getAniDnisOptions = () => {
+      const h4s = Array.from(document.querySelectorAll('h4'));
+      const opts = [];
+      const dnisH4 = h4s.find(el => el.textContent.trim() === 'DNIS');
+      if(dnisH4 && dnisH4.nextElementSibling) opts.push(dnisH4.nextElementSibling.textContent.trim());
+      const aniH4 = h4s.find(el => el.textContent.trim() === 'ANI');
+      if(aniH4 && aniH4.nextElementSibling) opts.push(aniH4.nextElementSibling.textContent.trim());
+      return opts;
+  };
+  
+  const getCallDuration = () => {
+      const h4s = Array.from(document.querySelectorAll('h4'));
+      const h4 = h4s.find(el => el.textContent.includes('Call Duration'));
+      if(h4 && h4.nextElementSibling) {
+          const val = parseFloat(h4.nextElementSibling.textContent.trim());
+          return isNaN(val) ? "" : Math.round(val);
+      }
+      return "";
+  };
+  // ---------------------------
+
+  const createCompactField = (placeholder, icon, type = "text", fullWidth = false, useLabel = false, initialValue = "", options = []) => {
       const wrapper = createElement("div");
       if(fullWidth) wrapper.style.gridColumn = "1 / -1"; 
 
@@ -218,7 +250,8 @@
           lbl.style.cssText = sLabel; 
           const input = createElement("input");
           input.type = type;
-          input.style.cssText = sInput; 
+          input.style.cssText = sInput;
+          if(initialValue) input.value = initialValue;
           wrapper.appendChild(lbl);
           wrapper.appendChild(input);
           return { div: wrapper, input };
@@ -231,17 +264,28 @@
           ico.style.cssText = "margin-right:8px;font-size:14px;opacity:0.7;user-select:none;min-width:18px;text-align:center";
           
           let input;
-          if(type === "textarea") {
+          if (options && options.length > 0) {
+              input = createElement("select");
+              input.style.cssText = "width:100%;border:none;outline:none;font-family:inherit;font-size:13px;background:transparent;cursor:pointer";
+              options.forEach(opt => {
+                  const o = createElement("option");
+                  o.value = opt;
+                  o.textContent = opt;
+                  input.appendChild(o);
+              });
+          } else if(type === "textarea") {
               input = createElement("textarea");
               input.style.cssText = "width:100%;border:none;outline:none;font-family:inherit;font-size:13px;resize:vertical;height:60px;padding:0";
               input.placeholder = placeholder;
               container.style.alignItems = "flex-start";
               ico.style.marginTop = "3px";
+              if(initialValue) input.value = initialValue;
           } else {
               input = createElement("input");
               input.type = type;
               input.style.cssText = "width:100%;border:none;outline:none;font-family:inherit;font-size:13px;background:transparent";
               input.placeholder = placeholder;
+              if(initialValue) input.value = initialValue;
           }
 
           addListener(input, "focus", () => container.style.borderColor = "#2563eb");
@@ -259,9 +303,11 @@
   headerFieldsContainer.style.cssText = "display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #eee";
 
   // Row 1 (3 columns)
-  const fInteractionId = createCompactField("Interaction ID", "🆔");
-  const fAdvocateName = createCompactField("Advocate Name", "👤");
-  const fCallAni = createCompactField("Call ANI/DNIS", "📞");
+  const fInteractionId = createCompactField("Interaction ID", "🆔", "text", false, false, getInteractionId());
+  const fAdvocateName = createCompactField("Advocate Name", "👤", "text", false, false, getAdvocateName());
+  
+  const aniOpts = getAniDnisOptions();
+  const fCallAni = createCompactField("Call ANI/DNIS", "📞", "text", false, false, "", aniOpts);
   
   headerFieldsContainer.appendChild(fInteractionId.div);
   headerFieldsContainer.appendChild(fAdvocateName.div);
@@ -271,7 +317,7 @@
   const caseDurationRow = createElement("div");
   caseDurationRow.style.cssText = "grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;";
   const fCaseNumber = createCompactField("Case #", "🔢");
-  const fCallDuration = createCompactField("Call Duration", "⏱️");
+  const fCallDuration = createCompactField("Call Duration", "⏱️", "text", false, false, getCallDuration());
   caseDurationRow.appendChild(fCaseNumber.div);
   caseDurationRow.appendChild(fCallDuration.div);
   headerFieldsContainer.appendChild(caseDurationRow);
