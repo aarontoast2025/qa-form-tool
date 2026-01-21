@@ -526,7 +526,33 @@
     return h2 ? h2.closest('.padding-xlarge') : null;
   };
 
+  const showToast = (msg, isError = true) => {
+      const toast = createElement("div");
+      toast.textContent = msg;
+      toast.style.cssText = `position:fixed;bottom:20px;right:20px;background:${isError ? '#ef4444' : '#10b981'};color:white;padding:12px 20px;border-radius:6px;box-shadow:0 10px 15px -3px rgba(0, 0, 0, 0.1);z-index:100000;font-size:14px;font-weight:500;opacity:0;transition:opacity 0.3s ease-in-out;pointer-events:none;`;
+      document.body.appendChild(toast);
+      
+      // Trigger reflow
+      requestAnimationFrame(() => {
+        toast.style.opacity = "1";
+      });
+      
+      setTimeout(() => {
+          toast.style.opacity = "0";
+          setTimeout(() => toast.remove(), 300);
+      }, 3000);
+  };
+
   const handleGeneration = async (saveToDb) => {
+    // Validation
+    if (!fCaseNumber.input.value.trim() || 
+        !fCaseCategory.input.value.trim() || 
+        !fIssueConcern.input.value.trim() || 
+        !fDateInteraction.input.value) {
+        showToast("Please fill out required fields and generate again.");
+        return;
+    }
+
     const activeBtn = saveToDb ? btnGenerate : btnGenerateOnly;
     const originalText = activeBtn.textContent;
     activeBtn.textContent = "Generating... ⏳";
