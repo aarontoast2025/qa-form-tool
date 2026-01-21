@@ -50,10 +50,11 @@
   ];
 
   const state = {};
+  // Initialize state
   groups.forEach(g => {
     g.items.forEach(item => {
       const key = `${g.name}-${item.id}`;
-      let defaultSel = item.options ? 0 : "yes"; // Left button default
+      let defaultSel = item.options ? 0 : "yes"; 
       if (item.label === "Expert Needed") defaultSel = 2;
       if (item.label === "Temp Start" || item.label === "Temp End") defaultSel = 2;
       if (item.label === "Temp Worsen") defaultSel = "no";
@@ -68,13 +69,16 @@
         itemId: item.id,
         itemType: item.options ? 'select' : 'toggle',
         selectedTags: [],
-        domTextarea: null
+        domTextarea: null,
+        // Helper to refresh UI when state changes programmatically
+        refreshUI: null 
       };
     });
   });
 
   let globalTags = [];
   let globalDefaults = {};
+  let existingRecordId = null; // Track if we are editing an existing record
 
   const updateText = (key) => {
     const s = state[key];
@@ -91,6 +95,16 @@
     s.text = txt;
     s.domTextarea.value = txt;
     s.domTextarea.dispatchEvent(new Event('input'));
+  };
+  
+  // This function forces the UI to match the current 'state' object
+  const refreshAllUI = () => {
+      Object.keys(state).forEach(key => {
+          if(state[key].refreshUI) state[key].refreshUI();
+          if(state[key].domTextarea) {
+              state[key].domTextarea.value = state[key].text;
+          }
+      });
   };
 
   const initData = async () => {
@@ -109,15 +123,20 @@
         });
         globalTags = await respTags.json();
         
-        // Populate initial texts
-        Object.keys(state).forEach(key => updateText(key));
+        // Initial defaults population (only if not loaded from DB yet)
+        if(!existingRecordId) {
+            Object.keys(state).forEach(key => updateText(key));
+        }
 
         document.dispatchEvent(new Event('qa-data-loaded'));
+        
+        // Now check for existing record
+        checkExistingRecord();
+        
     } catch (e) {
         console.error("Supabase fetch failed:", e);
     }
   };
-  initData();
 
   const createElement = (tag, css) => {
     const el = document.createElement(tag);
@@ -160,13 +179,10 @@
   
   const getTheme = (item, sel) => {
      if(item.options) return 'gray';
-     
      if (item.label === "Temp Worsen") {
          if(sel === 'no') return 'green';
          if(sel === 'yes') return 'red';
      }
-
-     // Simplified Logic: 'yes' (Left) is always Green (Good), 'no' (Right) is always Red (Bad)
      if(sel === 'yes') return 'green';
      if(sel === 'no') return 'red';
      return 'gray';
@@ -184,7 +200,7 @@
   
   let isDragging = false, startX = 0, startY = 0, initialX = 0, initialY = 0;
   const header = createElement("div", sHeader);
-  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v2.7</span>`;
+  header.innerHTML = `<span>QA Form Tool</span><span style="font-size:12px;color:#999">v3.0</span>`;
   
   addListener(header, "mousedown", (e) => {
     if(e.target === header || e.target.parentNode === header) {
@@ -302,7 +318,7 @@
   const headerFieldsContainer = createElement("div");
   headerFieldsContainer.style.cssText = "display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:15px;padding-bottom:15px;border-bottom:1px solid #eee";
 
-  // Row 1 (3 columns)
+  // Row 1
   const fInteractionId = createCompactField("Interaction ID", "🆔", "text", false, false, getInteractionId());
   const fAdvocateName = createCompactField("Advocate Name", "👤", "text", false, false, getAdvocateName());
   
@@ -313,7 +329,7 @@
   headerFieldsContainer.appendChild(fAdvocateName.div);
   headerFieldsContainer.appendChild(fCallAni.div);
 
-  // Row 1.5 (2 columns for Case # and Duration)
+  // Row 1.5
   const caseDurationRow = createElement("div");
   caseDurationRow.style.cssText = "grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;";
   const fCaseNumber = createCompactField("Case #", "🔢");
@@ -322,7 +338,7 @@
   caseDurationRow.appendChild(fCallDuration.div);
   headerFieldsContainer.appendChild(caseDurationRow);
 
-  // Row 2 (Dates - 2 columns dedicated)
+  // Row 2
   const dateRow = createElement("div");
   dateRow.style.cssText = "grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;";
   
@@ -334,16 +350,15 @@
   dateRow.appendChild(fDateEvaluation.div);
   headerFieldsContainer.appendChild(dateRow);
 
-  // Row 3 (Case Category - Full Width)
+  // Row 3
   const fCaseCategory = createCompactField("Case Category", "🗂️", "text", true);
   headerFieldsContainer.appendChild(fCaseCategory.div);
 
-  // Row 4 (Issue/Concern - Full Width)
+  // Row 4
   const fIssueConcern = createCompactField("Issue/Concern", "✍️", "textarea", true);
   headerFieldsContainer.appendChild(fIssueConcern.div);
 
   contentContainer.appendChild(headerFieldsContainer);
-  // --- End New Header Fields ---
 
   groups.forEach(group => {
     const groupTitle = createElement("div", sGroupHeader);
@@ -433,6 +448,15 @@
           if (idx === state[key].sel) o.selected = true;
           select.appendChild(o);
         });
+        
+        // Define UI refresh for Select
+        state[key].refreshUI = () => {
+            select.value = state[key].sel;
+            checkbox.checked = state[key].checked;
+            renderTags();
+            updateHeaderBg();
+        };
+
         addListener(select, "change", (e) => {
             state[key].sel = parseInt(e.target.value);
             state[key].selectedTags = []; 
@@ -443,7 +467,7 @@
         itemBody.appendChild(select);
       } else {
         const btnYes = createElement("button");
-        btnYes.textContent = item.reverse ? "No" : "Yes"; // Reversed? Left is "No", Right is "Yes"
+        btnYes.textContent = item.reverse ? "No" : "Yes"; 
         const btnNo = createElement("button");
         btnNo.textContent = item.reverse ? "Yes" : "No";
         const btnGroup = createElement("div", sBtnGroup);
@@ -451,31 +475,34 @@
         btnGroup.appendChild(btnNo);
 
         const updateBtnStyle = (val) => {
-          state[key].sel = val;
           const theme = getTheme(item, val);
           const cols = getColors(theme);
           
           const activeStyle = `${sBtnBase};background:${cols.bg};color:${cols.txt};border-color:${cols.border}`;
           const inactiveStyle = `${sBtnBase};background:white;color:#333;border-color:#ccc`;
 
-          if(val === 'yes') { // Left
+          if(val === 'yes') { 
              btnYes.style.cssText = activeStyle;
              btnNo.style.cssText = inactiveStyle;
-          } else { // Right
+          } else { 
              btnYes.style.cssText = inactiveStyle;
              btnNo.style.cssText = activeStyle;
           }
-
-          state[key].selectedTags = []; 
-          renderTags();
-          updateHeaderBg();
-          updateText(key);
         };
-        
+
+        // Define UI refresh for Buttons
+        state[key].refreshUI = () => {
+            updateBtnStyle(state[key].sel);
+            checkbox.checked = state[key].checked;
+            renderTags();
+            updateHeaderBg();
+        };
+
+        // Initial style
         updateBtnStyle(state[key].sel);
 
-        addListener(btnYes, "click", () => updateBtnStyle("yes"));
-        addListener(btnNo, "click", () => updateBtnStyle("no"));
+        addListener(btnYes, "click", () => { state[key].sel = "yes"; state[key].selectedTags = []; updateBtnStyle("yes"); renderTags(); updateHeaderBg(); updateText(key); });
+        addListener(btnNo, "click", () => { state[key].sel = "no"; state[key].selectedTags = []; updateBtnStyle("no"); renderTags(); updateHeaderBg(); updateText(key); });
         itemBody.appendChild(btnGroup);
       }
 
@@ -498,16 +525,13 @@
         if(expanded && globalTags.length > 0) renderTags(); 
       });
 
-      document.addEventListener('qa-data-loaded', () => {
-          if(expanded) renderTags();
-      });
-
       itemContainer.appendChild(itemHeader);
       itemContainer.appendChild(itemBody);
       contentContainer.appendChild(itemContainer);
     });
   });
 
+  // --- Footer ---
   const footer = createElement("div", sFooter);
   const btnCancel = createElement("button", sBtnCancel);
   btnCancel.textContent = "Cancel";
@@ -519,6 +543,10 @@
   const btnGenerateOnly = createElement("button", sBtnGenerate);
   btnGenerateOnly.textContent = "Generate";
   btnGenerateOnly.style.backgroundColor = "#4f46e5";
+  
+  const btnSaveOnly = createElement("button", sBtnGenerate);
+  btnSaveOnly.textContent = "Save";
+  btnSaveOnly.style.backgroundColor = "#059669"; // Greenish for save
 
   const findGroupContainer = (name) => {
     const h2s = Array.from(document.querySelectorAll('h2'));
@@ -531,16 +559,144 @@
       toast.textContent = msg;
       toast.style.cssText = `position:fixed;bottom:20px;right:20px;background:${isError ? '#ef4444' : '#10b981'};color:white;padding:12px 20px;border-radius:6px;box-shadow:0 10px 15px -3px rgba(0, 0, 0, 0.1);z-index:100000;font-size:14px;font-weight:500;opacity:0;transition:opacity 0.3s ease-in-out;pointer-events:none;`;
       document.body.appendChild(toast);
-      
-      // Trigger reflow
-      requestAnimationFrame(() => {
-        toast.style.opacity = "1";
-      });
-      
+      requestAnimationFrame(() => toast.style.opacity = "1");
       setTimeout(() => {
           toast.style.opacity = "0";
           setTimeout(() => toast.remove(), 300);
       }, 3000);
+  };
+
+  // --- Logic for Load/Save/Generate ---
+
+  const populateForm = (record) => {
+      existingRecordId = record.id;
+      
+      // Header Fields
+      if(record.advocate_name) fAdvocateName.input.value = record.advocate_name;
+      if(record.call_ani) fCallAni.input.value = record.call_ani;
+      if(record.case_number) fCaseNumber.input.value = record.case_number;
+      if(record.call_duration) fCallDuration.input.value = record.call_duration;
+      if(record.date_interaction) fDateInteraction.input.value = record.date_interaction;
+      if(record.date_evaluation) fDateEvaluation.input.value = record.date_evaluation;
+      if(record.case_category) fCaseCategory.input.value = record.case_category;
+      if(record.issue_concern) fIssueConcern.input.value = record.issue_concern;
+
+      // State / Form Data
+      if(record.form_data) {
+          Object.entries(record.form_data).forEach(([k, v]) => {
+             if(state[k]) {
+                 state[k].sel = v.sel;
+                 state[k].text = v.text;
+                 state[k].checked = v.checked;
+                 
+                 // Restore tags objects from labels
+                 if(v.tags && Array.isArray(v.tags)) {
+                     // We need to match tag labels back to full objects in globalTags
+                     // This relies on globalTags being loaded.
+                     // Since checkExistingRecord runs after initData, we should be fine.
+                     state[k].selectedTags = globalTags.filter(gt => 
+                         v.tags.includes(gt.tag_label) && 
+                         gt.group_name === state[k].groupName && 
+                         gt.item_id === state[k].itemId
+                     );
+                 } else {
+                     state[k].selectedTags = [];
+                 }
+             } 
+          });
+      }
+
+      refreshAllUI();
+      showToast("Evaluation loaded!", false);
+  };
+
+  const checkExistingRecord = async () => {
+      const iId = fInteractionId.input.value.trim();
+      if(!iId) return;
+
+      try {
+          const resp = await fetch(`${SUPABASE_URL}/rest/v1/qa_evaluations?interaction_id=eq.${iId}&limit=1`, {
+              headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+          });
+          if(resp.ok) {
+              const data = await resp.json();
+              if(data && data.length > 0) {
+                  populateForm(data[0]);
+              }
+          }
+      } catch(e) {
+          console.error("Check existing failed", e);
+      }
+  };
+
+  const saveRecord = async () => {
+    // Collect Payload
+    const payload = {
+        interaction_id: fInteractionId.input.value,
+        advocate_name: fAdvocateName.input.value,
+        call_ani: fCallAni.input.value,
+        case_number: fCaseNumber.input.value,
+        call_duration: fCallDuration.input.value,
+        date_interaction: fDateInteraction.input.value,
+        date_evaluation: fDateEvaluation.input.value,
+        case_category: fCaseCategory.input.value,
+        issue_concern: fIssueConcern.input.value,
+        form_data: Object.fromEntries(Object.entries(state).map(([k, v]) => [k, { 
+            sel: v.sel, 
+            text: v.text, 
+            checked: v.checked,
+            tags: v.selectedTags.map(t => t.tag_label) 
+        }]))
+    };
+
+    let url = `${SUPABASE_URL}/rest/v1/qa_evaluations`;
+    let method = 'POST';
+    
+    // If update
+    if(existingRecordId) {
+        url += `?id=eq.${existingRecordId}`;
+        method = 'PATCH';
+    }
+
+    const resp = await fetch(url, {
+        method: method,
+        headers: { 
+            "apikey": SUPABASE_KEY, 
+            "Authorization": `Bearer ${SUPABASE_KEY}`,
+            "Content-Type": "application/json",
+            "Prefer": "return=representation" 
+        },
+        body: JSON.stringify(payload)
+    });
+    
+    if(!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.message || "Save failed");
+    }
+    
+    // Update existingRecordId with the returned ID to ensure subsequent saves are updates
+    const savedData = await resp.json();
+    if(savedData && savedData.length > 0) {
+        existingRecordId = savedData[0].id;
+    }
+  };
+
+  const handleSaveOnly = async () => {
+      if (!fInteractionId.input.value.trim()) {
+          showToast("Interaction ID is required to save.");
+          return;
+      }
+      btnSaveOnly.textContent = "Saving...";
+      btnSaveOnly.disabled = true;
+      try {
+          await saveRecord();
+          showToast("Saved Successfully!", false);
+      } catch(e) {
+          showToast("Error saving: " + e.message, true);
+      } finally {
+          btnSaveOnly.textContent = "Save";
+          btnSaveOnly.disabled = false;
+      }
   };
 
   const handleGeneration = async (saveToDb) => {
@@ -557,7 +713,7 @@
     const originalText = activeBtn.textContent;
     activeBtn.textContent = "Generating... ⏳";
     
-    [btnGenerate, btnGenerateOnly, btnCancel].forEach(b => {
+    [btnGenerate, btnGenerateOnly, btnSaveOnly, btnCancel].forEach(b => {
         b.disabled = true;
         b.style.opacity = "0.7";
         b.style.cursor = "not-allowed";
@@ -573,41 +729,8 @@
         // --- Generation Complete ---
         if(saveToDb) {
             activeBtn.textContent = "Saving... ⏳";
-            
-            const payload = {
-                interaction_id: fInteractionId.input.value,
-                advocate_name: fAdvocateName.input.value,
-                call_ani: fCallAni.input.value,
-                case_number: fCaseNumber.input.value,
-                call_duration: fCallDuration.input.value,
-                date_interaction: fDateInteraction.input.value,
-                date_evaluation: fDateEvaluation.input.value,
-                case_category: fCaseCategory.input.value,
-                issue_concern: fIssueConcern.input.value,
-                form_data: Object.fromEntries(Object.entries(state).map(([k, v]) => [k, { 
-                    sel: v.sel, 
-                    text: v.text, 
-                    checked: v.checked,
-                    tags: v.selectedTags.map(t => t.tag_label) 
-                }]))
-            };
-
             try {
-                const resp = await fetch(`${SUPABASE_URL}/rest/v1/qa_evaluations`, {
-                   method: 'POST',
-                   headers: { 
-                       "apikey": SUPABASE_KEY, 
-                       "Authorization": `Bearer ${SUPABASE_KEY}`,
-                       "Content-Type": "application/json",
-                       "Prefer": "return=minimal"
-                   },
-                   body: JSON.stringify(payload)
-                });
-                
-                if(!resp.ok) {
-                    const err = await resp.json();
-                    throw err;
-                }
+                await saveRecord();
                 alert("✓ Generated and Saved to Database! 💾");
             } catch(e) {
                 console.error(e);
@@ -619,7 +742,7 @@
         
         // Restore State
         activeBtn.textContent = originalText;
-        [btnGenerate, btnGenerateOnly, btnCancel].forEach(b => {
+        [btnGenerate, btnGenerateOnly, btnSaveOnly, btnCancel].forEach(b => {
             b.disabled = false;
             b.style.opacity = "1";
             b.style.cursor = "pointer";
@@ -687,13 +810,19 @@
 
   addListener(btnGenerate, "click", () => handleGeneration(true));
   addListener(btnGenerateOnly, "click", () => handleGeneration(false));
+  addListener(btnSaveOnly, "click", () => handleSaveOnly());
 
   footer.appendChild(btnCancel);
+  footer.appendChild(btnSaveOnly);
   footer.appendChild(btnGenerateOnly);
   footer.appendChild(btnGenerate);
+  
   modal.appendChild(header);
   modal.appendChild(contentContainer);
   modal.appendChild(footer);
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
+
+  // Init Data (Async)
+  initData();
 })();
