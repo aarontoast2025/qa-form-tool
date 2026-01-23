@@ -3,7 +3,8 @@
 
   const SUPABASE_URL = "https://lobhwknisejjvubweall.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvYmh3a25pc2VqanZ1YndlYWxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1Nzk4NjIsImV4cCI6MjA4NDE1NTg2Mn0.2OTSmBD62Fgcecuxps6YoaW9-lPPu1MFA7cWl1g9MUk";
-  const GEMINI_API_KEY = "AIzaSyCo-3a1ZoYW-WipNslnbUiftFV4N-AJyY8";
+  const GEMINI_API_KEY = "AIzaSyCDRsfNYNtzw6JCGzGPGtvb6tNzjjj5TeQ";
+  // API Keys: AIzaSyCDRsfNYNtzw6JCGzGPGtvb6tNzjjj5TeQ AIzaSyCo-3a1ZoYW-WipNslnbUiftFV4N-AJyY8
 
   const groups = [
     {
