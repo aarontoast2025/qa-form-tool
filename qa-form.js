@@ -3,6 +3,7 @@
 
   const SUPABASE_URL = "https://lobhwknisejjvubweall.supabase.co";
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvYmh3a25pc2VqanZ1YndlYWxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1Nzk4NjIsImV4cCI6MjA4NDE1NTg2Mn0.2OTSmBD62Fgcecuxps6YoaW9-lPPu1MFA7cWl1g9MUk";
+  const GEMINI_API_KEY = "AIzaSyCo-3a1ZoYW-WipNslnbUiftFV4N-AJyY8";
 
   const groups = [
     {
@@ -227,6 +228,47 @@
   // --- Extraction Helpers ---
   const extractText = (selector) => { const el = document.querySelector(selector); return el ? el.textContent.trim() : ""; };
   
+  const extractTranscript = () => {
+      const els = document.querySelectorAll('.spec-transcript-content');
+      return Array.from(els).map(el => el.innerText.trim()).join("\n");
+  };
+
+  const generateSummary = async () => {
+      const transcript = extractTranscript();
+      if(!transcript) {
+          showToast("No transcript found on page.", true);
+          return null;
+      }
+      
+      const prompt = `Summarize the following transcript in one concise paragraph. Identify the customer's concern and how the specialist resolved it. Do not use names, use 'Customer' and 'Specialist' instead.
+
+Transcript:
+${transcript}`;
+
+      try {
+          // Using gemini-1.5-flash as the standard efficient model
+          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }]
+              })
+          });
+          
+          if(!resp.ok) throw new Error("Gemini API Error");
+          
+          const data = await resp.json();
+          if(data.candidates && data.candidates[0] && data.candidates[0].content) {
+              return data.candidates[0].content.parts[0].text;
+          }
+          return null;
+      } catch(e) {
+          console.error(e);
+          showToast("Failed to generate summary.", true);
+          return null;
+      }
+  };
+
   const getInteractionId = () => {
       const h4s = Array.from(document.querySelectorAll('h4'));
       const h4 = h4s.find(el => el.textContent.trim() === 'Interaction ID');
@@ -356,6 +398,38 @@
 
   // Row 4
   const fIssueConcern = createCompactField("Issue/Concern", "✍️", "textarea", true);
+
+  // --- Summary Generation Button ---
+  const btnSummary = createElement("span");
+  btnSummary.textContent = "✨";
+  btnSummary.title = "Generate Summary from Transcript";
+  btnSummary.style.cssText = "position:absolute; right:8px; top:8px; cursor:pointer; font-size:16px; opacity:0.6; user-select:none; z-index:5";
+  
+  const issueContainer = fIssueConcern.div.firstChild;
+  if(issueContainer) {
+      issueContainer.style.position = "relative";
+      issueContainer.appendChild(btnSummary);
+      
+      addListener(btnSummary, "mouseenter", () => btnSummary.style.opacity = "1");
+      addListener(btnSummary, "mouseleave", () => btnSummary.style.opacity = "0.6");
+      addListener(btnSummary, "click", async (e) => {
+          e.stopPropagation();
+          const originalIcon = btnSummary.textContent;
+          btnSummary.textContent = "⏳";
+          btnSummary.style.cursor = "wait";
+          
+          const summary = await generateSummary();
+          if(summary) {
+              fIssueConcern.input.value = summary;
+              fIssueConcern.input.dispatchEvent(new Event('input')); // Update state
+              showToast("Summary generated!", false);
+          }
+          
+          btnSummary.textContent = originalIcon;
+          btnSummary.style.cursor = "pointer";
+      });
+  }
+
   headerFieldsContainer.appendChild(fIssueConcern.div);
 
   contentContainer.appendChild(headerFieldsContainer);
