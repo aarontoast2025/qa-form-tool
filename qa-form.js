@@ -246,16 +246,20 @@ Transcript:
 ${transcript}`;
 
       try {
-          // Using gemini-1.5-flash as the standard efficient model
-          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt }] }]
-              })
-          });
+            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+
           
-          if(!resp.ok) throw new Error("Gemini API Error");
+          if(!resp.ok) {
+              const errData = await resp.json().catch(() => ({}));
+              console.error("Gemini API Error:", resp.status, errData);
+              throw new Error(`API Error: ${resp.status} ${errData.error?.message || ''}`);
+          }
           
           const data = await resp.json();
           if(data.candidates && data.candidates[0] && data.candidates[0].content) {
@@ -263,8 +267,8 @@ ${transcript}`;
           }
           return null;
       } catch(e) {
-          console.error(e);
-          showToast("Failed to generate summary.", true);
+          console.error("Summary Generation Failed:", e);
+          showToast(`Failed: ${e.message}`, true);
           return null;
       }
   };
