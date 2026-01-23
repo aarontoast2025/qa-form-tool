@@ -242,8 +242,10 @@
       
       const prompt = `Summarize the following transcript in one concise paragraph.
       Identify the customer's concern and how the specialist resolved it.
-      Do not use names, use 'Customer' and 'Specialist' instead.
+      Do not use names, use 'customer' and 'Specialist' instead.
       Do not use em-dashes. Specify the dates, amounts, and other relevant details as mentioned.
+      Do not include the phone numbers, or company codes as well.
+      The summary should start not from the confirmation of the details of the customers, but from the actual issue raised by the customer.
 
 Transcript:
 ${transcript}`;
