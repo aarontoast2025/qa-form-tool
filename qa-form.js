@@ -240,7 +240,10 @@
           return null;
       }
       
-      const prompt = `Summarize the following transcript in one concise paragraph. Identify the customer's concern and how the specialist resolved it. Do not use names, use 'Customer' and 'Specialist' instead.
+      const prompt = `Summarize the following transcript in one concise paragraph.
+      Identify the customer's concern and how the specialist resolved it.
+      Do not use names, use 'Customer' and 'Specialist' instead.
+      Do not use em-dashes. Specify the dates, amounts, and other relevant details as mentioned.
 
 Transcript:
 ${transcript}`;
