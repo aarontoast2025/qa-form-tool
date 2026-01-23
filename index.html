@@ -194,7 +194,10 @@
                                          </td>
                                          <td class="px-4 py-3 text-sm text-gray-700">{{ ev.date_evaluation }}</td>
                                          <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ ev.advocate_name }}</td>
-                                         <td class="px-4 py-3 text-sm text-gray-500 font-mono text-xs">{{ ev.interaction_id }}</td>
+                                         <td class="px-4 py-3 text-sm text-gray-500 font-mono text-xs">
+                                             <a v-if="ev.source_url" :href="ev.source_url" target="_blank" class="text-blue-600 hover:underline hover:text-blue-800 transition-colors" title="Open Interaction URL">{{ ev.interaction_id }} <i class="fa-solid fa-external-link-alt text-[10px] ml-1 opacity-50"></i></a>
+                                             <span v-else>{{ ev.interaction_id }}</span>
+                                         </td>
                                          <td class="px-4 py-3 text-sm text-gray-500 font-mono text-xs">{{ ev.case_number }}</td>
                                          <td class="px-4 py-3 text-sm text-gray-600 truncate max-w-[150px]">{{ ev.case_category }}</td>
                                          <td class="px-4 py-3 text-sm">

@@ -725,6 +725,7 @@ ${transcript}`;
         date_evaluation: fDateEvaluation.input.value,
         case_category: fCaseCategory.input.value,
         issue_concern: fIssueConcern.input.value,
+        source_url: window.location.href,
         form_data: Object.fromEntries(Object.entries(state).map(([k, v]) => [k, { 
             sel: v.sel, 
             text: v.text, 
